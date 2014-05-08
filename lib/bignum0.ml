@@ -1,4 +1,4 @@
-open Core.Std
+open Core_kernel.Std
 
 module Stable = struct
   module V1 = struct
@@ -16,12 +16,14 @@ module Stable = struct
     let thousand = of_int 1_000
     let million  = of_int 1_000_000
     let billion  = of_int 1_000_000_000
+    let trillion = million * million
 
-    let trillion =
-      if Int.(=) Sys.word_size 64
-      then of_int 1_000_000_000_000
-      else of_float 1_000_000_000_000.
-    ;;
+    let tenth      = one / ten
+    let hundredth  = one / hundred
+    let thousandth = one / thousand
+    let millionth  = one / million
+    let billionth  = one / billion
+    let trillionth = one / trillion
 
     let to_rational_string = to_string
     let of_rational_string s = of_string s
@@ -73,37 +75,45 @@ module Stable = struct
 
     let to_string = to_float_string
 
-    let of_float_string =
-      let int_rex     = Re2.Regex.create_exn "^(\\+|-)?[0-9]+$" in
-      let valid_parts = Re2.Regex.create_exn "^(\\+|-)?[0-9]*\\.[0-9]*$" in
-      (fun s ->
-        if Re2.Regex.matches int_rex s
-        then of_rational_string s
-        else begin
-          try
-            if not (Re2.Regex.matches valid_parts s)
-            then failwithf "unable to parse %s as Bignum.t" s ();
-            begin match String.lsplit2 ~on:'.' s with
-            | Some (int_part, frac_part) ->
-                if String.(=) frac_part ""
-                then of_rational_string int_part
-                else begin
-                  let frac_len  = String.length frac_part in
-                  let den       = Z.pow (Z.of_int 10) frac_len in
-                  let int_part  = Z.mul (Z.of_string int_part) den in
-                  let frac_part = Z.of_string frac_part in
-                  let num =
-                    if Char.(=) s.[0] '-'
-                    then Z.sub int_part frac_part
-                    else Z.add int_part frac_part
-                  in
-                  make num den
-                end
-            | None -> assert false
-            end
-          with
-          | e -> failwithf "unable to convert %s to Bignum.t : %s" s (Exn.to_string e) ()
-        end)
+    let of_float_string s =
+      let fail () = failwithf "unable to parse %S as Bignum.t" s () in
+      if String.is_empty s then fail ();
+      let is_negative, skip_sign =
+        match s.[0] with
+        | '-' -> true , 1
+        | '+' -> false, 1
+        | _   -> false, 0
+      in
+      let seen_digit = ref false in
+      let seen_dot = ref false in
+      (* do all the validation upfront *)
+      for i = skip_sign to Int.O.(String.length s - 1) do
+        if Char.is_digit s.[i]
+        then seen_digit := true
+        else if Char.equal s.[i] '.'
+        then begin
+          if !seen_dot
+          then fail () (* can't have two dots *)
+          else seen_dot := true
+        end
+        else fail () (* can't have anything not a digit or dot *)
+      done;
+      if not !seen_digit then fail ();
+      (* okay, now there are no more error cases *)
+      if not !seen_dot
+      then of_bigint (Z.of_string s)
+      else begin
+        let int_part, frac_part = String.lsplit2_exn s ~on:'.' in
+        let frac_len  = String.length frac_part in
+        let den       = Z.pow (Z.of_int 10) frac_len in
+        let int_part  = Z.(of_string int_part * den) in
+        let frac_part = Z.of_string frac_part in
+        let num = if is_negative
+          then Z.sub int_part frac_part
+          else Z.add int_part frac_part
+        in
+        make num den
+      end
     ;;
 
     let of_string s =
@@ -133,39 +143,21 @@ module Stable = struct
       | e -> Exn.reraise e "Bignum.of_string"
     ;;
 
-    TEST = to_string (of_string "0")          = "0"
-    TEST = to_string (of_string "0.01")       = "0.01"
-    TEST = to_string (of_string ".01")        = "0.01"
-    TEST = to_string (of_string "-.01")       = "-0.01"
-    TEST = to_string (of_string "-0.01")      = "-0.01"
-    TEST = to_string (of_string "1")          = "1"
-    TEST = to_string (of_string "1.2")        = "1.2"
-    TEST = to_string (of_string "1.23")       = "1.23"
-    TEST = to_string (of_string "1.234")      = "1.234"
-    TEST = to_string (of_string "1.2345")     = "1.2345"
-    TEST = to_string (of_string "1.23456")    = "1.23456"
-    TEST = to_string (of_string "1.234567")   = "1.234567"
-    TEST = to_string (of_string "1.2345678")  = "1.2345678"
-    TEST = to_string (of_string "1.23456789") = "1.23456789"
-    TEST = to_string (of_string "-1")          = "-1"
-    TEST = to_string (of_string "-1.2")        = "-1.2"
-    TEST = to_string (of_string "-1.23")       = "-1.23"
-    TEST = to_string (of_string "-1.234")      = "-1.234"
-    TEST = to_string (of_string "-1.2345")     = "-1.2345"
-    TEST = to_string (of_string "-1.23456")    = "-1.23456"
-    TEST = to_string (of_string "-1.234567")   = "-1.234567"
-    TEST = to_string (of_string "-1.2345678")  = "-1.2345678"
-    TEST = to_string (of_string "-1.23456789") = "-1.23456789"
+    TEST_UNIT "of_string parse failures" =
+      List.iter
+        [""; "hello"; "123x"; "."; "-."; "1.2.3"; "+-1"; "--1"; "-+1"; "++1"]
+        ~f:(<:test_pred< string >> (fun s ->
+          let doesn't_parse_with f =
+            try ignore (f s); false with _ -> true
+          in
+          doesn't_parse_with of_float_string && doesn't_parse_with Float.of_string))
+    ;;
 
-    TEST = of_string "1.2e5" = of_int 120_000
-    TEST = of_string "1.2E5" = of_int 120_000
-    TEST = of_string "-0.2e0" = of_string "-0.2"
-    TEST = of_string "10e-3" = one / hundred
+    TEST = to_string (of_string "1.23456789") = "1.23456789"
 
     TEST = to_string (of_int 7 / of_int 9)     = "0.777777777"
     TEST = to_string (of_int (-7) / of_int 9)  = "-0.777777777"
     TEST = (of_float 766.46249999999997726) <> (of_float 766.462499999999864)
-
 
     let sexp_of_t t =
       try
@@ -186,6 +178,26 @@ module Stable = struct
     TEST = Sexp.equal
       (sexp_of_t (of_int 1 / of_int 3))
       Sexp.O.(List [Atom "0.333333333"; Atom "+"; Atom "1/3000000000"])
+
+    (* these are down here instead of with of_string
+       because <:test_result< t >> uses sexp_of_t *)
+    TEST_UNIT "of_string matches Float.of_string" =
+      let as_float s =
+        <:test_result< t >>
+          ~expect:(of_float (Float.of_string s))
+          (of_string s);
+      in
+      List.iter
+      (* All representable exactly as floats *)
+      [ "0"; ".0"; "0."; "00"
+      ; "1"; ".5"; "1."; "01"
+      ; "0.25"; "0.0625"; ".0625"; "01.0625"
+      ; "1.375"; "1.75"; "99.9375"
+      ; "1.2e5"; "1.2E5"; "0.5e0"; "125e-3"
+      ] ~f:(fun s ->
+        as_float s;
+        as_float ("+" ^ s);
+        as_float ("-" ^ s))
 
     let t_of_sexp s =
       match s with
@@ -208,7 +220,294 @@ module Stable = struct
       let of_binable s = Zarith.Q.of_string s
     end)
   end
-  module Current = V1
+  module V2 = struct
+    include V1
+    include Bin_prot.Utils.Make_binable(struct
+      module Binable = struct
+        type t =
+          | Zero
+          | Int of int
+          | Over_10 of int
+          | Over_100 of int
+          | Over_1_000 of int
+          | Over_10_000 of int
+          | Over_100_000 of int
+          | Over_1_000_000 of int
+          | Over_10_000_000 of int
+          | Over_100_000_000 of int
+          | Over_int of int * int
+          | Other of V1.t
+        with bin_io, variants
+      end
+      type t = V1.t
+
+      (* To prevent a silent overflow that would result in a wrong result,
+         we only optimise after having checked that the numerator will still fit in an int
+         after having been multiplied by (i / d).*)
+      (* pre condition: i > 0, d > 0 and d divides i *)
+      let check_overflow f ~n ~d i =
+        (* Let p = i / d. p is an integer (cf pre condition). We have i = p.d.
+               n <= Max / i * d = Max / p.d * d
+          ->   n * p <= Max / p.d * d.p, by multiplying by p on both sides.
+          ->   n * p <= Max, because (Max / pd) * pd = pd q,
+                             where Max = pd q + r, with 0 <= r < pd
+          So if n is positive, n <= Max / i * d, implies n * (i / d) <= Max.
+          If n is negative, n >= - Max / i * d , implies -n <= Max / i * d
+          which implies -n * p <= Max, see above.
+             -n * p <= Max implies n * p >= -Max > Min.
+        *)
+        let max_n = Int.((max_value / i) * d) in
+        if Int.(n > max_n || n < -max_n) then Binable.Over_int(n, d)
+        else f Int.O.(n * (i / d))
+
+      let to_binable t =
+        if t = V1.zero then Binable.Zero
+        else
+          let num = t.num in
+          let den = t.den in
+          if not (Z.fits_int num && Z.fits_int den) then
+            Binable.Other t
+          else
+            (* Both num and den fits in an int each *)
+            let n = Z.to_int num in (* Z.fits_int num *)
+            let d = Z.to_int den in (* Z.fits_int den *)
+            let ( = ) = Core_kernel.Std.Int.( = ) in
+            let ( mod ) = Pervasives.( mod ) in
+            if d = 1 then Binable.Int n
+            else if 10_000 mod d = 0
+            then
+              begin
+                if 100 mod d = 0
+                then if 10 mod d = 0
+                  then check_overflow Binable.over_10 ~n ~d 10
+                  else check_overflow Binable.over_100 ~n ~d 100
+                else if 1_000 mod d = 0
+                  then check_overflow Binable.over_1_000 ~n ~d 1_000
+                  else check_overflow Binable.over_10_000 ~n ~d 10_000
+            end
+            else if 100_000_000 mod d = 0 then
+              begin
+                if 1_000_000 mod d = 0
+                then if 100_000 mod d = 0
+                  then check_overflow Binable.over_100_000 ~n ~d 100_000
+                  else check_overflow Binable.over_1_000_000 ~n ~d 1_000_000
+                else if 10_000_000 mod d = 0
+                  then check_overflow Binable.over_10_000_000 ~n ~d 10_000_000
+                  else check_overflow Binable.over_100_000_000 ~n ~d 100_000_000
+              end
+            else Binable.Over_int (n, d)
+      ;;
+
+      let of_binable =
+        let open Zarith.Q in
+        function
+        | Binable.Zero    -> zero
+        | Binable.Int i   -> of_int i
+        | Binable.Over_int (n, d) -> of_ints n d
+        | Binable.Over_10 n -> of_ints n 10
+        | Binable.Over_100 n -> of_ints n 100
+        | Binable.Over_1_000 n -> of_ints n 1_000
+        | Binable.Over_10_000 n -> of_ints n 10_000
+        | Binable.Over_100_000 n -> of_ints n 100_000
+        | Binable.Over_1_000_000 n -> of_ints n 1_000_000
+        | Binable.Over_10_000_000 n -> of_ints n 10_000_000
+        | Binable.Over_100_000_000 n -> of_ints n 100_000_000
+        | Binable.Other o -> o
+      ;;
+    end)
+  end
+  (* Note V1 and V2 are the same type in ocaml.  The only thing
+     that changes is the binprot representation.  This is safe (imho)
+     as people declaring a stable type will have to explicitely referred
+     to V1 or V2.  At a later point we can hide that V1 is equal to
+     the regular type and thereby force people to switch to V2 or explicity
+     call a of/to v1 function (which would be the identity) *)
+  module Current = V2
+
+  TEST_MODULE = struct
+    open Core_kernel.Std
+
+    let buf = Bigstring.create 256
+
+    let roundtrip b =
+      for pos = 0 to 17 do
+        let _ : int = V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
+        let result1  = V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref pos) in
+        let _ : int = V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
+        let result2  = V2.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref pos) in
+        <:test_eq< V1.t >> b result1;
+        <:test_eq< V2.t >> b result2;
+      done
+    ;;
+
+    let test b =
+      let open Core_kernel.Std in
+      let v1 = Bin_prot.Writer.to_string V1.bin_writer_t b |> String.length in
+      let v2 = Bin_prot.Writer.to_string V2.bin_writer_t b |> String.length in
+      (* change to true if you want to see compaction rates during testing *)
+      if false then
+        printf "%s v1: %i v2: %i\n" (V1.sexp_of_t b |> Sexp.to_string_mach)
+          v1 v2;
+      roundtrip b;
+    ;;
+
+    (* This checks an axiom used in the proof of [check_overflow] *)
+    TEST = Int.(-max_value > min_value)
+    ;;
+
+    (* This contains a test for all branches.*)
+    TEST_UNIT = test Current.zero (* test for Zero *)
+    TEST_UNIT = test Current.one (* test for Int *)
+    TEST_UNIT = test Current.ten
+    TEST_UNIT = test Current.hundred
+    TEST_UNIT = test Current.thousand
+    TEST_UNIT = test Current.million
+    TEST_UNIT = test Current.billion
+    TEST_UNIT = test Current.trillion
+
+    let ( / ) = Current.( / )
+    let ( * ) = Current.( * )
+    (* Test for all Over_10^i *)
+    TEST_UNIT = test (Current.one / Current.ten)
+    TEST_UNIT = test (Current.one / Current.hundred)
+    TEST_UNIT = test (Current.one / Current.thousand)
+    TEST_UNIT = test (Current.one / (Current.thousand * Current.ten))
+    TEST_UNIT = test (Current.one / (Current.thousand * Current.hundred))
+    TEST_UNIT = test (Current.one / Current.million)
+    TEST_UNIT = test (Current.one / (Current.million  * Current.ten))
+    TEST_UNIT = test (Current.one / (Current.million  * Current.hundred))
+    TEST_UNIT = test (Current.one / Current.billion)
+    TEST_UNIT = test (Current.one / (Current.billion  * Current.ten))
+    TEST_UNIT = test (Current.one / (Current.billion  * Current.hundred))
+    TEST_UNIT = test (Current.one / Current.trillion)
+    (* Test for Over_int *)
+    TEST_UNIT = test ((Current.of_int 2) / (Current.of_int 3))
+    (* Test for overflow  : 2^62 / 25 would be Over_100(2^64) and should overflow,
+        and fallback on Other(2^62, 25) *)
+    TEST_UNIT = test ((Current.mul_2exp Current.one 62) / (Current.of_int 25))
+    TEST_UNIT = test ((Current.mul_2exp (Current.of_int (-1)) 62) / (Current.of_int 25))
+
+    (* This test tests for overflow in the numerator *)
+    TEST_UNIT = test ((Current.mul_2exp Current.one  65) / (Current.of_int 25))
+
+    (* This test tests for overflow in the denominator *)
+    TEST_UNIT = test (Current.one /  (Current.mul_2exp Current.one  65))
+
+    let numbers = [
+      "-100.00000000";
+      "100.00000000";
+      "0.00000000";
+      "-200.00000000";
+      "200.00000000";
+      "-300.00000000";
+      "300.00000000";
+      "-400.00000000";
+      "-1000.00000000";
+      "1000.00000000";
+      "-1.00000000";
+      "400.00000000";
+      "-500.00000000";
+      "1.00000000";
+      "500.00000000";
+      "-600.00000000";
+      "-2000.00000000";
+      "2.00000000";
+      "-2.00000000";
+      "600.00000000";
+      "0.20720000";
+      "-0.20227524";
+      "0.18800000";
+      "0.16550000";
+      "0.15950000";
+      "0.13000000";
+      "0.12950000";
+      "0.11950000";
+      "-0.07232871";
+      "0.05950000";
+      "-0.05424653";
+      "0.04600437";
+      "0.04600000";
+      "0.04050000";
+      "-0.03616435";
+      "0.03550391";
+      "0.03550000";
+      "0.02000000";
+      "0.01950000";
+      "0.01050000";
+      "-316673.67291835";
+      "217240000000.0";
+      "-217240000000.0";
+      "3423.123456789";
+      "-3423.1234567891";
+    ]
+    ;;
+
+    TEST_UNIT = List.iter numbers ~f:(fun s -> test (V1.of_string s))
+    ;;
+  end
+
+  BENCH_MODULE "Bignum binprot" = struct
+    open Core_kernel.Std
+    let buf = Bigstring.create 128
+
+    let numbers = List.map ~f:V1.of_string [
+      "-100.00000000";
+      "100.00000000";
+      "0.00000000";
+      "-200.00000000";
+      "200.00000000";
+      "-300.00000000";
+      "300.00000000";
+      "-400.00000000";
+      "-1000.00000000";
+      "1000.00000000";
+      "-1.00000000";
+      "400.00000000";
+      "-500.00000000";
+      "1.00000000";
+      "500.00000000";
+      "-600.00000000";
+      "-2000.00000000";
+      "2.00000000";
+      "-2.00000000";
+      "600.00000000";
+      "0.20720000";
+      "-0.20227524";
+      "0.18800000";
+      "0.16550000";
+      "0.15950000";
+      "0.13000000";
+      "0.12950000";
+      "0.11950000";
+      "-0.07232871";
+      "0.05950000";
+      "-0.05424653";
+      "0.04600437";
+      "0.04600000";
+      "0.04050000";
+      "-0.03616435";
+      "0.03550391";
+      "0.03550000";
+      "0.02000000";
+      "0.01950000";
+      "0.01050000";
+      "-316673.67291835";
+      "3423.123456789";
+      "-3423.1234567891";
+    ]
+    ;;
+    BENCH "roundtrip compact" = List.iter numbers ~f:(fun b ->
+      let _ : int = V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b in
+      let _ : V2.t = V2.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0) in
+      ())
+    ;;
+
+    BENCH "roundtrip classic" = List.iter numbers ~f:(fun b ->
+      let _ : int = V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b in
+      let _ : V1.t = V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0) in
+      ())
+    ;;
+  end
 end
 
 
@@ -235,7 +534,6 @@ let to_float t = Float.(/) (Z.to_float t.num) (Z.to_float t.den)
 let sum xs = List.fold xs ~init:zero ~f:(+)
 
 let is_zero (x:t) = x = zero
-let __UNUSED_VALUE__is_inf _t = false
 
 let t_of_sexp = function
   | Sexp.Atom f -> of_string f
@@ -249,9 +547,6 @@ TEST =
   let low_bound = of_string "26.710790545" in
   let high_bound = of_string "26.710790546" in
   t > low_bound && t < high_bound
-
-let __UNUSED_VALUE__of_rational x = x
-let __UNUSED_VALUE__to_rational x = x
 
 let sign x = if x < zero then -1 else if x > zero then 1 else 0
 let pp ppf t = Format.fprintf ppf "%s" (to_string t)
@@ -300,52 +595,227 @@ TEST = of_string "2" ** 1000 = of_string
   ^"242309854210746050623711418779541821530464749835819412673987675591655439460770629145"
   ^"71196477686542167660429831652624386837205668069376")
 
-let truncate t places =
-  let decimal_mover = ten ** places in
-  (of_bigint (to_bigint (decimal_mover * t)) / decimal_mover)
-;;
-TEST = truncate (of_string "1.23456789") 0 = of_string "1"
-TEST = truncate (of_string "1.23456789") 1 = of_string "1.2"
-TEST = truncate (of_string "1.23456789") 2 = of_string "1.23"
-TEST = truncate (of_string "1.23456789") 3 = of_string "1.234"
-TEST = truncate (of_string "1.23456789") 4 = of_string "1.2345"
-TEST = truncate (of_string "-1.23456789") 0 = of_string "-1"
-TEST = truncate (of_string "-1.23456789") 1 = of_string "-1.2"
-TEST = truncate (of_string "-1.23456789") 2 = of_string "-1.23"
-TEST = truncate (of_string "-1.23456789") 3 = of_string "-1.234"
-TEST = truncate (of_string "-1.23456789") 4 = of_string "-1.2345"
+let half = of_ints 1 2
+
+let truncate t = of_bigint (to_bigint t)
 
 let floor t =
-  let t' = truncate t 0 in
+  let t' = truncate t in
   if t' > t then t' - one else t'
-TEST = floor (of_string "123456.789") = (of_string "123456")
-TEST = floor (of_string "-123456.789") = of_string "-123457"
-
-let round =
-  let one_half = of_float 0.5 in
-  (fun t places ->
-    let decimal_mover = ten ** places in
-    floor (t * decimal_mover + one_half) / decimal_mover)
 ;;
-TEST = round (of_string "1.23456789") 0  = of_string "1"
-TEST = round (of_string "1.23456789") 1  = of_string "1.2"
-TEST = round (of_string "1.23456789") 2  = of_string "1.23"
-TEST = round (of_string "1.23456789") 3  = of_string "1.235"
-TEST = round (of_string "1.23456789") 4  = of_string "1.2346"
-TEST = round (of_string "-1.23456789") 0 = of_string "-1"
-TEST = round (of_string "-1.23456789") 1 = of_string "-1.2"
-TEST = round (of_string "-1.23456789") 2 = of_string "-1.23"
-TEST = round (of_string "-1.23456789") 3 = of_string "-1.235"
-TEST = round (of_string "-1.23456789") 4 = of_string "-1.2346"
 
-TEST = round (of_string "0.5") 0 = of_float (Float.round 0.5)
-TEST = round (of_string "-0.5") 0 = of_float (Float.round (-0.5))
+(* This is quite a common case, and substantially faster than faffing around with
+   [to_multiple_of] *)
+let round_integer ?(dir=`Nearest) t =
+  match dir with
+  | `Zero -> truncate t
+  | `Down -> floor t
+  | `Up -> neg (floor (neg t))
+  | `Nearest -> floor (t + half)
+;;
+
+let round ?dir ?to_multiple_of t =
+  match to_multiple_of with
+  | None -> round_integer ?dir t
+  | Some to_multiple_of ->
+    if is_zero to_multiple_of
+    then failwith "Bignum.round: to_multiple_of may not be zero";
+    to_multiple_of * round_integer ?dir (t / to_multiple_of)
+;;
+
+let iround ?dir ?to_multiple_of t =
+  match to_multiple_of with
+  | None -> to_int (round_integer ?dir t)
+  | Some to_multiple_of ->
+    if Int.equal 0 to_multiple_of
+    then None
+    else to_int (round ?dir ~to_multiple_of:(of_int to_multiple_of) t)
+;;
+
+let iround_exn ?dir ?to_multiple_of t =
+  match to_multiple_of with
+  | None -> to_int_exn (round_integer ?dir t)
+  | Some to_multiple_of ->
+    to_int_exn (round ?dir ~to_multiple_of:(of_int to_multiple_of) t)
+;;
+
+let round_decimal ?dir ~digits t =
+  if Int.equal 0 digits
+  then round_integer ?dir t
+  else round ?dir ~to_multiple_of:(tenth ** digits) t
+;;
+
+BENCH_MODULE "round" = struct
+  let numbers = List.map ~f:of_string [
+    "-100.00000000";
+    "100.00000000";
+    "0.00000000";
+    "-200.00000000";
+    "200.00000000";
+    "-300.00000000";
+    "300.00000000";
+    "-400.00000000";
+    "-1000.00000000";
+    "1000.00000000";
+    "-1.00000000";
+    "400.00000000";
+    "-500.00000000";
+    "1.00000000";
+    "500.00000000";
+    "-600.00000000";
+    "-2000.00000000";
+    "2.00000000";
+    "-2.00000000";
+    "600.00000000";
+    "0.20720000";
+    "-0.20227524";
+    "0.18800000";
+    "0.16550000";
+    "0.15950000";
+    "0.13000000";
+    "0.12950000";
+    "0.11950000";
+    "-0.07232871";
+    "0.05950000";
+    "-0.05424653";
+    "0.04600437";
+    "0.04600000";
+    "0.04050000";
+    "-0.03616435";
+    "0.03550391";
+    "0.03550000";
+    "0.02000000";
+    "0.01950000";
+    "0.01050000";
+    "-316673.67291835";
+    "3423.123456789";
+    "-3423.1234567891";
+  ]
+  ;;
+
+  BENCH_INDEXED "round_decimal" digits [0;3;6;9] =
+    fun () ->
+    List.iter numbers ~f:(fun number -> ignore (round_decimal number ~digits : t))
+
+  BENCH "round" =
+    List.iter numbers ~f:(fun number -> ignore (round number : t))
+end
+
+TEST_MODULE "round" = struct
+
+  let x     = of_string "1.23456789"
+  let neg_x = neg x
+  ;;
+
+  TEST = round                            x           = of_string "1"
+  TEST = round ~to_multiple_of:tenth      x           = of_string "1.2"
+  TEST = round ~to_multiple_of:hundredth  x           = of_string "1.23"
+  TEST = round ~to_multiple_of:thousandth x           = of_string "1.235"
+  TEST = round ~to_multiple_of:millionth  x           = of_string "1.234568"
+  TEST = round                            neg_x       = of_string "-1"
+  TEST = round ~to_multiple_of:tenth      neg_x       = of_string "-1.2"
+  TEST = round ~to_multiple_of:hundredth  neg_x       = of_string "-1.23"
+  TEST = round ~to_multiple_of:thousandth neg_x       = of_string "-1.235"
+  TEST = round ~to_multiple_of:millionth  neg_x       = of_string "-1.234568"
+  ;;
+
+  TEST = round_decimal ~dir:`Nearest ~digits:0 x      = of_string "1"
+  TEST = round_decimal ~dir:`Nearest ~digits:1 x      = of_string "1.2"
+  TEST = round_decimal ~dir:`Nearest ~digits:2 x      = of_string "1.23"
+  TEST = round_decimal ~dir:`Nearest ~digits:3 x      = of_string "1.235"
+  TEST = round_decimal ~dir:`Nearest ~digits:4 x      = of_string "1.2346"
+  TEST = round_decimal ~dir:`Nearest ~digits:0 neg_x  = of_string "-1"
+  TEST = round_decimal ~dir:`Nearest ~digits:1 neg_x  = of_string "-1.2"
+  TEST = round_decimal ~dir:`Nearest ~digits:2 neg_x  = of_string "-1.23"
+  TEST = round_decimal ~dir:`Nearest ~digits:3 neg_x  = of_string "-1.235"
+  TEST = round_decimal ~dir:`Nearest ~digits:4 neg_x  = of_string "-1.2346"
+  ;;
+
+  TEST = round_decimal ~dir:`Up ~digits:0 x      = of_string "2"
+  TEST = round_decimal ~dir:`Up ~digits:1 x      = of_string "1.3"
+  TEST = round_decimal ~dir:`Up ~digits:2 x      = of_string "1.24"
+  TEST = round_decimal ~dir:`Up ~digits:3 x      = of_string "1.235"
+  TEST = round_decimal ~dir:`Up ~digits:4 x      = of_string "1.2346"
+  TEST = round_decimal ~dir:`Up ~digits:0 neg_x  = of_string "-1"
+  TEST = round_decimal ~dir:`Up ~digits:1 neg_x  = of_string "-1.2"
+  TEST = round_decimal ~dir:`Up ~digits:2 neg_x  = of_string "-1.23"
+  TEST = round_decimal ~dir:`Up ~digits:3 neg_x  = of_string "-1.234"
+  TEST = round_decimal ~dir:`Up ~digits:4 neg_x  = of_string "-1.2345"
+  ;;
+
+  TEST = round_decimal ~dir:`Down ~digits:0 x      = of_string "1"
+  TEST = round_decimal ~dir:`Down ~digits:1 x      = of_string "1.2"
+  TEST = round_decimal ~dir:`Down ~digits:2 x      = of_string "1.23"
+  TEST = round_decimal ~dir:`Down ~digits:3 x      = of_string "1.234"
+  TEST = round_decimal ~dir:`Down ~digits:4 x      = of_string "1.2345"
+  TEST = round_decimal ~dir:`Down ~digits:0 neg_x  = of_string "-2"
+  TEST = round_decimal ~dir:`Down ~digits:1 neg_x  = of_string "-1.3"
+  TEST = round_decimal ~dir:`Down ~digits:2 neg_x  = of_string "-1.24"
+  TEST = round_decimal ~dir:`Down ~digits:3 neg_x  = of_string "-1.235"
+  TEST = round_decimal ~dir:`Down ~digits:4 neg_x  = of_string "-1.2346"
+  ;;
+
+  TEST = round_decimal ~dir:`Zero ~digits:0 x      = of_string "1"
+  TEST = round_decimal ~dir:`Zero ~digits:1 x      = of_string "1.2"
+  TEST = round_decimal ~dir:`Zero ~digits:2 x      = of_string "1.23"
+  TEST = round_decimal ~dir:`Zero ~digits:3 x      = of_string "1.234"
+  TEST = round_decimal ~dir:`Zero ~digits:4 x      = of_string "1.2345"
+  TEST = round_decimal ~dir:`Zero ~digits:0 neg_x  = of_string "-1"
+  TEST = round_decimal ~dir:`Zero ~digits:1 neg_x  = of_string "-1.2"
+  TEST = round_decimal ~dir:`Zero ~digits:2 neg_x  = of_string "-1.23"
+  TEST = round_decimal ~dir:`Zero ~digits:3 neg_x  = of_string "-1.234"
+  TEST = round_decimal ~dir:`Zero ~digits:4 neg_x  = of_string "-1.2345"
+  ;;
+
+  TEST = try ignore (round ~to_multiple_of:zero one : t); false with _ -> true
+  TEST = Option.is_none (iround ~to_multiple_of:0 one)
+  TEST = try ignore (iround_exn ~to_multiple_of:0 one : int); false with _ -> true
+
+  let dir_to_string = function
+    | `Up -> "up"
+    | `Down -> "down"
+    | `Nearest -> "nearest"
+    | `Zero -> "zero"
+
+  let as_float f =
+    List.iter [`Up; `Down; `Nearest; `Zero] ~f:(fun dir ->
+      <:test_result< float >> ~message:(dir_to_string dir)
+        ~expect:(Float.round ~dir f)
+        (to_float (round ~dir (of_float f))))
+
+  TEST_UNIT =
+    List.iter [0.; 0.5; 99.5; 99.99; 1_000.]
+      ~f:(fun f -> as_float f; as_float (Float.neg f))
+
+  TEST_MODULE "iround" = struct
+    let as_int ~to_multiple_of i =
+      List.iter [`Up; `Down; `Nearest; `Zero] ~f:(fun dir ->
+        <:test_result< int >> ~message:(dir_to_string dir)
+          ~expect:(Int.round ~dir ~to_multiple_of i)
+          (iround_exn ~dir ~to_multiple_of (of_int i)))
+
+    TEST_UNIT =
+      List.iter [1; 327; 1_000_012] ~f:(fun to_multiple_of ->
+        List.iter [0; 1; 3315; 98_765_432] ~f:(fun i ->
+          as_int ~to_multiple_of i;
+          as_int ~to_multiple_of (Int.neg i)))
+
+    TEST_UNIT = as_int ~to_multiple_of:1 Int.max_value
+    TEST_UNIT = as_int ~to_multiple_of:1 Int.min_value
+
+    let overflows t =
+      <:test_pred< int option >> Option.is_none (iround t);
+      try ignore (iround_exn t : int); false with _ -> true
+
+    TEST = overflows (of_int Int.max_value + one)
+    TEST = overflows (of_int Int.min_value - one)
+  end
+end
 
 include (Hashable.Make_binable (struct
   include T
 
   let compare = compare
-  let __UNUSED_VALUE__equal   = equal
   let hash    = Hashtbl.hash
 end) : Hashable.S_binable with type t := t)
 
@@ -360,7 +830,6 @@ module O = struct
 
   let abs = abs
   let neg = neg
-  let round = round
 
   let zero      = zero
   let one       = one
@@ -370,6 +839,13 @@ module O = struct
   let million   = million
   let billion   = billion
   let trillion  = trillion
+
+  let tenth      = tenth
+  let hundredth  = hundredth
+  let thousandth = thousandth
+  let millionth  = millionth
+  let billionth  = billionth
+  let trillionth = trillionth
 
   let of_int    = of_int
   let of_float  = of_float

@@ -1,5 +1,5 @@
 (** Arbitrary-precision rational numbers. *)
-open Core.Std
+open Core_kernel.Std
 
 type t
 
@@ -21,6 +21,13 @@ val million  : t
 val billion  : t
 val trillion : t
 
+val tenth      : t
+val hundredth  : t
+val thousandth : t
+val millionth  : t
+val billionth  : t
+val trillionth : t
+
 val ( + )    : t -> t -> t
 val ( - )    : t -> t -> t
 val ( / )    : t -> t -> t
@@ -34,8 +41,32 @@ val abs      : t -> t
 val neg      : t -> t
 val inverse  : t -> t
 val sum      : t list -> t
-val round    : t -> int -> t
-val truncate : t -> int -> t
+
+(** Default rounding direction is [`Nearest].
+    [to_multiple_of] defaults to [one] and must not be [zero]. *)
+val round
+  :  ?dir:[ `Down | `Up | `Nearest | `Zero ]
+  -> ?to_multiple_of:t
+  -> t -> t
+
+(** [None] if the result would overflow or [to_multiple_of] is zero. *)
+val iround
+  :  ?dir:[ `Down | `Up | `Nearest | `Zero ]
+  -> ?to_multiple_of:int
+  -> t -> int option
+
+(** Exception if the result would overflow or [to_multiple_of] is zero. *)
+val iround_exn
+  :  ?dir:[ `Down | `Up | `Nearest | `Zero ]
+  -> ?to_multiple_of:int
+  -> t -> int
+
+(** Convenience wrapper around [round] to round to the specified number
+    of decimal digits. *)
+val round_decimal
+  :  ?dir:[ `Down | `Up | `Nearest | `Zero ]
+  -> digits:int
+  -> t -> t
 
 (** Decimal. Output is truncated (not rounded) to nine decimal places, so may be lossy.
     Consider using [sexp_of_t] if you need lossless stringification. *)
@@ -63,6 +94,9 @@ module Stable : sig
   module V1 : sig
     type nonrec t = t with sexp, bin_io, compare
   end
+  module V2 : sig
+    type nonrec t = t with sexp, bin_io, compare
+  end
 end
 
 module O : sig
@@ -79,7 +113,6 @@ module O : sig
   val ( ** )   : t -> int -> t
   val abs      : t -> t
   val neg      : t -> t
-  val round    : t -> int -> t
 
   include Core_kernel.Polymorphic_compare_intf.Infix with type t := t
 
@@ -91,6 +124,13 @@ module O : sig
   val million  : t
   val billion  : t
   val trillion : t
+
+  val tenth      : t
+  val hundredth  : t
+  val thousandth : t
+  val millionth  : t
+  val billionth  : t
+  val trillionth : t
 
   val of_int    : int -> t
   val of_float  : float -> t
