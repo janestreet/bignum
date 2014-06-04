@@ -1,3 +1,8 @@
+## 111.17.00
+
+- Improved the performance of binprot deserialization by removing the
+  allocation of an intermediate type.
+
 ## 111.13.00
 
 - Eliminated the dependence of `Bignum` on `Re2`, and reduced dependence

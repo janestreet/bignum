@@ -222,6 +222,32 @@ module Stable = struct
   end
   module V2 = struct
     include V1
+    (* The V2 serialized representation makes use of special case to
+       achieve better compression AND less overhead when serialising /
+       deserialising.
+
+       It is written to go via an intermediate type.  However to gain
+       additional speed during deserialisation, we provide a handexpanded
+       read function that avoids the unnecessary allocation of the
+       intermediate type. To do so the two types below must be kept in
+       sync (including order of constructors) -- this is enforced by a
+       unit test below. *)
+    module Tag = struct
+      type t =
+        | Zero
+        | Int
+        | Over_10
+        | Over_100
+        | Over_1_000
+        | Over_10_000
+        | Over_100_000
+        | Over_1_000_000
+        | Over_10_000_000
+        | Over_100_000_000
+        | Over_int
+        | Other
+      with bin_io, variants
+    end
     include Bin_prot.Utils.Make_binable(struct
       module Binable = struct
         type t =
@@ -240,6 +266,10 @@ module Stable = struct
         with bin_io, variants
       end
       type t = V1.t
+
+      TEST "tag/binable constructors in sync" =
+        List.for_all2_exn Tag.Variants.descriptions Binable.Variants.descriptions
+          ~f:(fun (tag_name, _) (bin_name, _) -> String.equal tag_name bin_name)
 
       (* To prevent a silent overflow that would result in a wrong result,
          we only optimise after having checked that the numerator will still fit in an int
@@ -315,6 +345,48 @@ module Stable = struct
         | Binable.Other o -> o
       ;;
     end)
+
+    let bin_read_t buf ~pos_ref =
+      match Tag.bin_read_t buf ~pos_ref with
+      | Tag.Zero     -> zero
+      | Tag.Int      -> of_int (Int.bin_read_t buf ~pos_ref)
+      | Tag.Over_int ->
+        let n = Int.bin_read_t buf ~pos_ref in
+        let d = Int.bin_read_t buf ~pos_ref in
+        of_ints n d
+      | Tag.Over_10 ->
+        let n = Int.bin_read_t buf ~pos_ref in
+        of_ints n 10
+      | Tag.Over_100 ->
+        let n = Int.bin_read_t buf ~pos_ref in
+        of_ints n 100
+      | Tag.Over_1_000 ->
+        let n = Int.bin_read_t buf ~pos_ref in
+        of_ints n 1_000
+      | Tag.Over_10_000 ->
+        let n = Int.bin_read_t buf ~pos_ref in
+        of_ints n 10_000
+      | Tag.Over_100_000 ->
+        let n = Int.bin_read_t buf ~pos_ref in
+        of_ints n 100_000
+      | Tag.Over_1_000_000 ->
+        let n = Int.bin_read_t buf ~pos_ref in
+        of_ints n 1_000_000
+      | Tag.Over_10_000_000 ->
+        let n = Int.bin_read_t buf ~pos_ref in
+        of_ints n 10_000_000
+      | Tag.Over_100_000_000 ->
+        let n = Int.bin_read_t buf ~pos_ref in
+        of_ints n 100_000_000
+      | Tag.Other ->
+        V1.bin_read_t buf ~pos_ref
+    ;;
+
+    let bin_reader_t = {
+      bin_reader_t with Bin_prot.Type_class.read = bin_read_t ;
+    }
+
+
   end
   (* Note V1 and V2 are the same type in ocaml.  The only thing
      that changes is the binprot representation.  This is safe (imho)
