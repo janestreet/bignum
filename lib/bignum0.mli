@@ -32,10 +32,9 @@ val ( + )    : t -> t -> t
 val ( - )    : t -> t -> t
 val ( / )    : t -> t -> t
 val ( * )    : t -> t -> t
-(** Beware: [2 ** 1_000_000] will take at least a megabyte to store the result,
+(** Beware: [2 ** 8_000_000] will take at least a megabyte to store the result,
     and multiplying numbers a megabyte long is slow no matter how clever your algorithm.
-    Be careful to ensure the second argument is reasonably-sized, or face the wrath of the
-    OOM killer. *)
+    Be careful to ensure the second argument is reasonably-sized. *)
 val ( ** )   : t -> int -> t
 val abs      : t -> t
 val neg      : t -> t
@@ -72,7 +71,7 @@ val round_decimal
     Consider using [sexp_of_t] if you need lossless stringification. *)
 val to_string  : t -> string
 val to_float   : t -> float
-(** [None] if the conversion would overflow *)
+(** Rounds toward zero. [None] if the conversion would overflow *)
 val to_int     : t -> int option
 val to_int_exn : t -> int
 val is_zero    : t -> bool
