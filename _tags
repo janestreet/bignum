@@ -1,3 +1,32 @@
 # OASIS_START
+# DO NOT EDIT (digest: e513729622dac2085c847c33a2fe9034)
+# Ignore VCS directories, you can use the same kind of rule outside
+# OASIS_START/STOP if you want to exclude directories that contains
+# useless stuff for the build process
+<**/.svn>: -traverse
+<**/.svn>: not_hygienic
+".bzr": -traverse
+".bzr": not_hygienic
+".hg": -traverse
+".hg": not_hygienic
+".git": -traverse
+".git": not_hygienic
+"_darcs": -traverse
+"_darcs": not_hygienic
+# Library bignum
+"lib/bignum.cmxs": use_bignum
+"lib/bignum0.cmx": for-pack(Bignum)
+"lib/std.cmx": for-pack(Bignum)
+<lib/*.ml{,i}>: package(bin_prot)
+<lib/*.ml{,i}>: package(bin_prot.syntax)
+<lib/*.ml{,i}>: package(comparelib.syntax)
+<lib/*.ml{,i}>: package(core_kernel)
+<lib/*.ml{,i}>: package(pa_bench.syntax)
+<lib/*.ml{,i}>: package(pa_ounit.syntax)
+<lib/*.ml{,i}>: package(pa_test.syntax)
+<lib/*.ml{,i}>: package(sexplib.syntax)
+<lib/*.ml{,i}>: package(threads)
+<lib/*.ml{,i}>: package(variantslib.syntax)
+<lib/*.ml{,i}>: package(zarith)
 # OASIS_STOP
 <lib/*.ml{,i}>: syntax_camlp4o
