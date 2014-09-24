@@ -1,3 +1,9 @@
+## 112.01.00
+
+- Added `Bignum.Bigint` module, with arbitrary-precision integers
+  based on `Zarith`, which is significantly faster than the
+  `Num.Big_int` library.
+
 ## 111.17.00
 
 - Improved the performance of binprot deserialization by removing the

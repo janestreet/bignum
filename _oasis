@@ -2,7 +2,7 @@ OASISFormat:      0.3
 OCamlVersion:     >= 4.00.1
 FindlibVersion:   >= 1.3.2
 Name:             bignum
-Version:          111.28.00
+Version:          112.01.00
 Synopsis:         Core-flavoured wrapper around zarith's arbitrary-precision rationals
 Authors:          Jane Street Capital LLC <opensource@janestreet.com>
 Copyrights:       (C) 2009-2014 Jane Street Capital LLC <opensource@janestreet.com>
@@ -19,7 +19,8 @@ Library bignum
   Path:          lib
   FindlibName:   bignum
   Pack:          true
-  Modules:       Bignum0,
+  Modules:       Bigint,
+                 Bignum0,
                  Std
   BuildDepends:  bin_prot,
                  bin_prot.syntax,
@@ -31,6 +32,8 @@ Library bignum
                  sexplib.syntax,
                  threads,
                  variantslib.syntax,
+                 typerep_lib,
+                 typerep_lib.syntax,
                  zarith
   XMETARequires: bin_prot,
                  comparelib,
@@ -40,4 +43,5 @@ Library bignum
                  pa_test,
                  sexplib,
                  threads,
+                 typerep_lib,
                  zarith
