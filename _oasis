@@ -21,7 +21,8 @@ Library bignum
   Pack:          true
   Modules:       Bigint,
                  Bignum0,
-                 Std
+                 Std,
+                 Zarith_1_2
   BuildDepends:  bin_prot,
                  bin_prot.syntax,
                  comparelib.syntax,
