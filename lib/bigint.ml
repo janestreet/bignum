@@ -100,6 +100,10 @@ module T = struct
   include Stable.Current
   ;;
 
+  let of_zarith_bigint t = t
+  let to_zarith_bigint t = t
+  ;;
+
   let (/%) x y =
     if Z.sign y >= 0
     then Z.ediv x y

@@ -54,11 +54,21 @@ val iround
   -> ?to_multiple_of:int
   -> t -> int option
 
+val round_as_bigint
+  :  ?dir:[ `Down | `Up | `Nearest | `Zero ]
+  -> ?to_multiple_of:Bigint.t
+  -> t -> Bigint.t option
+
 (** Exception if the result would overflow or [to_multiple_of] is zero. *)
 val iround_exn
   :  ?dir:[ `Down | `Up | `Nearest | `Zero ]
   -> ?to_multiple_of:int
   -> t -> int
+
+val round_as_bigint_exn
+  :  ?dir:[ `Down | `Up | `Nearest | `Zero ]
+  -> ?to_multiple_of:Bigint.t
+  -> t -> Bigint.t
 
 (** Convenience wrapper around [round] to round to the specified number
     of decimal digits. *)
@@ -86,6 +96,10 @@ val num : t -> t
 
 (** [den t] returns the denominator of the numeric *)
 val den : t -> t
+
+val of_bigint : Bigint.t -> t
+val num_as_bigint : t -> Bigint.t
+val den_as_bigint : t -> Bigint.t
 
 val pp : Format.formatter -> t -> unit
 

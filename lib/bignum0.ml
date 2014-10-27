@@ -587,6 +587,14 @@ module T = Stable.Current
 include T
 include Comparable.Make_binable (T)
 
+let of_zarith_bigint = of_bigint
+let to_zarith_bigint = to_bigint
+
+let of_bigint big = of_zarith_bigint (Bigint.to_zarith_bigint big)
+
+let num_as_bigint t = Bigint.of_zarith_bigint t.num
+let den_as_bigint t = Bigint.of_zarith_bigint t.den
+
 let to_int_exn = to_int
 
 TEST = Int.equal (to_int_exn (of_int Int.max_value)) Int.max_value
@@ -669,7 +677,7 @@ TEST = of_string "2" ** 1000 = of_string
 
 let half = of_ints 1 2
 
-let truncate t = of_bigint (to_bigint t)
+let truncate t = of_zarith_bigint (to_zarith_bigint t)
 
 let floor t =
   let t' = truncate t in
@@ -709,6 +717,18 @@ let iround_exn ?dir ?to_multiple_of t =
   | None -> to_int_exn (round_integer ?dir t)
   | Some to_multiple_of ->
     to_int_exn (round ?dir ~to_multiple_of:(of_int to_multiple_of) t)
+;;
+
+let round_as_bigint_exn ?dir ?to_multiple_of t =
+  Bigint.of_zarith_bigint
+    (match to_multiple_of with
+     | None -> to_zarith_bigint (round_integer ?dir t)
+     | Some to_multiple_of ->
+       to_zarith_bigint (round ?dir ~to_multiple_of:(of_bigint to_multiple_of) t))
+;;
+
+let round_as_bigint ?dir ?to_multiple_of t =
+  Option.try_with (fun () -> round_as_bigint_exn ?dir ?to_multiple_of t)
 ;;
 
 let round_decimal ?dir ~digits t =

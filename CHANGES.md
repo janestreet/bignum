@@ -1,3 +1,8 @@
+## 112.06.00
+
+- Added functions to round from `Bignum.t` to `Bigint.t`, and to convert
+  `Bigint.t` into `Bignum.t`.
+
 ## 112.01.00
 
 - Added `Bignum.Bigint` module, with arbitrary-precision integers
