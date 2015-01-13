@@ -234,6 +234,96 @@ end
 include (O : module type of O with type t := t)
 ;;
 
+module Random_internal : sig
+  val random :  ?state:Random.State.t -> t -> t
+end = struct
+
+  (* Uniform random generation of Bigint values.
+
+     [random ~state range] chooses a [depth] and generates random values using
+     [Random.State.bits state], called [1 lsl depth] times and concatenated.  The
+     preliminary result [n] therefore satisfies [0 <= n < 1 lsl (30 lsl depth)].
+
+     In order for the random choice to be uniform between [0] and [range-1], there must
+     exist [k > 0] such that [n < k * range <= 1 lsl (30 lsl depth)].  If so, [n % range]
+     is returned.  Otherwise the random choice process is repeated from scratch.
+
+     The [depth] value is chosen so that repeating is uncommon (1 in 1,000 or less). *)
+
+  let bits_at_depth ~depth = 30 lsl depth
+
+  let range_at_depth ~depth = shift_left one (bits_at_depth ~depth)
+
+  let rec choose_bit_depth_for_range_from ~range ~depth =
+    if range_at_depth ~depth >= range
+    then depth
+    else choose_bit_depth_for_range_from ~range ~depth:(Int.succ depth)
+  ;;
+
+  let choose_bit_depth_for_range ~range =
+    choose_bit_depth_for_range_from ~range ~depth:0
+  ;;
+
+  let rec random_bigint_at_depth ~state ~depth =
+    if Int.equal depth 0
+    then of_int (Random.State.bits state)
+    else
+      let prev_depth = Int.pred depth in
+      let prefix = random_bigint_at_depth ~state ~depth:prev_depth in
+      let suffix = random_bigint_at_depth ~state ~depth:prev_depth in
+      bit_or
+        (shift_left prefix (bits_at_depth ~depth:prev_depth))
+        suffix
+  ;;
+
+  let random_value_is_uniform_in_range ~range ~depth n =
+    let k = range_at_depth ~depth / range in
+    n < k * range
+  ;;
+
+  let rec large_random_at_depth ~state ~range ~depth =
+    let result = random_bigint_at_depth ~state ~depth in
+    if random_value_is_uniform_in_range ~range ~depth result
+    then result % range
+    else large_random_at_depth ~state ~range ~depth
+  ;;
+
+  let large_random ~state ~range =
+    let tolerance_factor = of_int 1_000 in
+    let depth = choose_bit_depth_for_range ~range:(range * tolerance_factor) in
+    large_random_at_depth ~state ~range ~depth
+  ;;
+
+  let random ?(state = Random.State.default) range =
+    if range <= zero
+    then failwithf "Bigint.random: argument %s <= 0" (to_string_hum range) ()
+    (* Note that it's not safe to do [1 lsl 30] on a 32-bit machine (with 31-bit signed
+       integers) *)
+    else if range < shift_left one 30
+    then of_int (Random.State.int state (to_int_exn range))
+    else large_random ~state ~range
+  ;;
+end
+
+let random = Random_internal.random
+
+TEST_UNIT "random" =
+  let state = Random.State.make [| 1 ; 2 ; 3 |] in
+  let range = shift_left one 100 in
+  let seen = Hash_set.create () in
+  for _i = 1 to 100_000 do
+    let t = random ~state range in
+    if t < zero || t >= range then failwith "random result out of bounds";
+    Core_kernel.Std.Hash_set.strict_add_exn seen t
+  done
+;;
+
+BENCH_FUN "random" =
+  let state = Random.State.make [| 1 ; 2 ; 3 |] in
+  let range = shift_left one 10_000 in
+  fun () -> random ~state range
+;;
+
 include Core_kernel.Int_conversions.Make_hex(struct
 
   type nonrec t = t with bin_io, compare, typerep

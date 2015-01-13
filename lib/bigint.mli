@@ -27,6 +27,10 @@ val min_value           : [`Bigint_is_unbounded]
 val max_value           : [`Bigint_is_unbounded]
 val shift_right_logical : [`Bigint_is_unbounded]
 
+(** [random t] produces a value uniformly distributed between [zero] (inclusive) and
+    [t] (exclusive), or raises if [t <= zero]. *)
+val random : ?state:Random.State.t -> t -> t
+
 module Stable : sig
   module V1 : sig
     type nonrec t = t with sexp, bin_io, compare

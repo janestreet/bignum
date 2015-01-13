@@ -1,3 +1,8 @@
+## 112.17.00
+
+- Added `Bigint.random` function, which produces a uniformly
+  distributed value.
+
 ## 112.06.00
 
 - Added functions to round from `Bignum.t` to `Bigint.t`, and to convert
