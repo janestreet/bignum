@@ -351,7 +351,7 @@ TEST_MODULE "vs Int" = struct
 
   TEST_UNIT "unary" =
     let nums =
-      [ -1001001001 ; -1001001 ; -1001 ; -1 ; 0 ; 1 ; 1234 ; 1234567 ; 1234567890 ]
+      [ -1001001001 ; -1001001 ; -1001 ; -1 ; 0 ; 1 ; 1234 ; 1234567 ; 123456789 ]
     in
     let ops =
       [ Int.( ~- ) , ( ~- ), "( ~- )"
@@ -376,7 +376,7 @@ TEST_MODULE "vs Int" = struct
 
   TEST_UNIT "binops" =
     let nums =
-      [ -1001001001 ; -1001001 ; -1001 ; -1 ; 0 ; 1 ; 1234 ; 1234567 ; 1234567890 ]
+      [ -10101 ; -101 ; -1 ; 0 ; 1 ; 123 ; 12345 ]
     in
     let wrap_round f x y = f x ~to_multiple_of:y in
     let wrap_compare f x y = of_int_exn (f x y) in
@@ -416,7 +416,7 @@ TEST_MODULE "vs Int" = struct
 
   TEST_UNIT "comparisons" =
     let nums =
-      [ -1001001001 ; -1001001 ; -1001 ; -1 ; 0 ; 1 ; 1234 ; 1234567 ; 1234567890 ]
+      [ -1001001001 ; -1001001 ; -1001 ; -1 ; 0 ; 1 ; 1234 ; 1234567 ; 123456789 ]
     in
     let ops =
       [ Int.( <> ), ( <> ), "( <> )"
@@ -443,7 +443,7 @@ TEST_MODULE "vs Int" = struct
 
   TEST_UNIT "shift" =
     let nums =
-      [ -1001001001 ; -1001001 ; -1001 ; -1 ; 0 ; 1 ; 1234 ; 1234567 ; 1234567890 ]
+      [ -10101 ; -101 ; -1 ; 0 ; 1 ; 123 ; 12345 ]
     in
     let ops =
       [ Int.shift_left , shift_left , "shift_left"
@@ -452,7 +452,7 @@ TEST_MODULE "vs Int" = struct
     in
     List.iter ops ~f:(fun (int_op, big_op, op_str) ->
       List.iter nums ~f:(fun int_x ->
-        for int_y = 0 to 30 do
+        for int_y = 0 to 15 do
           let expect = Option.try_with (fun () -> int_op int_x int_y) in
           let big_x = of_int_exn int_x in
           let big_actual = Option.try_with (fun () -> big_op big_x int_y) in
@@ -465,7 +465,7 @@ TEST_MODULE "vs Int" = struct
   ;;
 
   TEST_UNIT "pow" =
-    let bases = [ -1001 ; -101 ; -11 ; -1 ; 0 ; 1 ; 12 ; 123 ; 1234 ] in
+    let bases = [ -101 ; -11 ; -1 ; 0 ; 1 ; 12 ; 123 ] in
     List.iter bases ~f:(fun base ->
       for expt = -4 to 4 do
         let expect = Option.try_with (fun () -> Int.pow base expt) in
