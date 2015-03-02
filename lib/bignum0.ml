@@ -25,6 +25,10 @@ module Stable = struct
     let billionth  = one / billion
     let trillionth = one / trillion
 
+    let nan          = zero      / zero
+    let infinity     = one       / zero
+    let neg_infinity = minus_one / zero
+
     let to_rational_string = to_string
     let of_rational_string s = of_string s
 
@@ -73,7 +77,13 @@ module Stable = struct
         | false,_,_  -> int_part ^ "." ^ dec_part)
     ;;
 
-    let to_string = to_float_string
+    let to_string t =
+      if Z.(t.den = zero) then
+        if Z.(t.num > zero) then "inf" else
+        if Z.(t.num < zero) then "-inf" else
+          "nan"
+      else
+        to_float_string t
 
     let of_float_string s =
       let fail () = failwithf "unable to parse %S as Bignum.t" s () in
@@ -124,21 +134,26 @@ module Stable = struct
           else s
         in
         let s = String.lowercase s in (* 'E' -> 'e' *)
-        if String.contains s '/' then of_rational_string s
-        else if String.contains s 'e' then
-          begin match String.lsplit2 ~on:'e' s with
-          | None -> assert false
-          | Some (float_part,power) ->
-            let base   = of_float_string float_part in
-            let power  = Int.of_string power in
-            let power' = Z.pow (Z.of_int 10) (Int.abs power) in
-            let power' =
-              if Int.(>) power 0 then make power' Z.one
-              else make Z.one power'
-            in
-            mul base power'
-          end
-        else of_float_string s
+        match s with
+        | "nan" | "+nan" | "-nan" -> nan
+        | "inf" | "+inf"          -> infinity
+        | "-inf"                  -> neg_infinity
+        | _                       ->
+          if String.contains s '/' then of_rational_string s
+          else if String.contains s 'e' then
+            begin match String.lsplit2 ~on:'e' s with
+            | None -> assert false
+            | Some (float_part,power) ->
+              let base   = of_float_string float_part in
+              let power  = Int.of_string power in
+              let power' = Z.pow (Z.of_int 10) (Int.abs power) in
+              let power' =
+                if Int.(>) power 0 then make power' Z.one
+                else make Z.one power'
+              in
+              mul base power'
+            end
+          else of_float_string s
       with
       | e -> Exn.reraise e "Bignum.of_string"
     ;;
@@ -159,18 +174,27 @@ module Stable = struct
     TEST = to_string (of_int (-7) / of_int 9)  = "-0.777777777"
     TEST = (of_float 766.46249999999997726) <> (of_float 766.462499999999864)
 
+    TEST = of_string (to_string nan)          = nan
+    TEST = of_string (to_string infinity)     = infinity
+    TEST = of_string (to_string neg_infinity) = neg_infinity
+
     let sexp_of_t t =
       try
-        let float_string    = to_float_string t in
-        let of_float_string = of_float_string float_string in
-        if equal of_float_string t then Sexp.Atom float_string
-        else begin
-          let diff = sub t of_float_string in
-          Sexp.List [
-            Sexp.Atom float_string;
-            Sexp.Atom "+";
-            Sexp.Atom (to_rational_string diff) ]
-        end
+        if Z.(t.den = zero) then
+          if Z.(t.num > zero) then Sexp.Atom "inf" else
+          if Z.(t.num < zero) then Sexp.Atom "-inf" else
+            Sexp.Atom "nan"
+        else
+          let float_string    = to_float_string t in
+          let of_float_string = of_float_string float_string in
+          if equal of_float_string t then Sexp.Atom float_string
+          else begin
+            let diff = sub t of_float_string in
+            Sexp.List [
+              Sexp.Atom float_string;
+              Sexp.Atom "+";
+              Sexp.Atom (to_rational_string diff) ]
+          end
       with
       | e -> Exn.reraise e "Bignum.sexp_of_t"
     ;;
@@ -209,6 +233,10 @@ module Stable = struct
       | Sexp.List _ -> of_sexp_error "expected Atom or List [float; \"+\"; remainder]" s
     ;;
 
+    TEST = t_of_sexp (sexp_of_t nan)          = nan
+    TEST = t_of_sexp (sexp_of_t infinity)     = infinity
+    TEST = t_of_sexp (sexp_of_t neg_infinity) = neg_infinity
+
     include Bin_prot.Utils.Make_binable (struct
       type t' = t
       type t  = t'
@@ -218,6 +246,11 @@ module Stable = struct
 
       let to_binable t = Zarith.Q.to_string t
       let of_binable s = Zarith.Q.of_string s
+
+      TEST = of_binable (to_binable nan)          = nan
+      TEST = of_binable (to_binable infinity)     = infinity
+      TEST = of_binable (to_binable neg_infinity) = neg_infinity
+
     end)
   end
   module V2 = struct
@@ -303,7 +336,8 @@ module Stable = struct
             let d = Z.to_int den in (* Z.fits_int den *)
             let ( = ) = Core_kernel.Std.Int.( = ) in
             let ( mod ) = Pervasives.( mod ) in
-            if d = 1 then Binable.Int n
+            if d = 0 then Binable.Other t
+            else if d = 1 then Binable.Int n
             else if 10_000 mod d = 0
             then
               begin
@@ -464,6 +498,11 @@ module Stable = struct
 
     (* This test tests for overflow in the denominator *)
     TEST_UNIT = test (Current.one /  (Current.mul_2exp Current.one  65))
+
+    (* Test for division by zero cases *)
+    TEST_UNIT = test Current.nan
+    TEST_UNIT = test Current.infinity
+    TEST_UNIT = test Current.neg_infinity
 
     let numbers = [
       "-100.00000000";

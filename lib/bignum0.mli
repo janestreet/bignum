@@ -5,7 +5,9 @@ type t
 
 (** Sexp conversions represent values as decimals of up to nine decimal places if
     possible, or else as [(x + y/z)] where [x] is decimal and [y] and [z] are integers. So
-    for example, 1/3 <-> (0.333333333 + 1/3000000000) *)
+    for example, 1/3 <-> (0.333333333 + 1/3000000000).  In string and sexp conversions,
+    values with denominator of zero are special-cased: 0/0 <-> "nan", 1/0 <-> "inf", and
+    -1/0 <-> "-inf". *)
 include Sexpable   with type t := t
 include Comparable with type t := t
 include Floatable  with type t := t

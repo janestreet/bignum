@@ -1,3 +1,7 @@
+## 112.24.00
+
+- Fixed exception raised by `Bignum.sexp_of_t` when the denominator is zero.
+
 ## 112.17.00
 
 - Added `Bigint.random` function, which produces a uniformly
