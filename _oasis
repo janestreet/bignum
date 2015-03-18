@@ -35,7 +35,8 @@ Library bignum
                  variantslib.syntax,
                  typerep_lib,
                  typerep_lib.syntax,
-                 zarith
+                 zarith,
+                 num
   XMETARequires: bin_prot,
                  comparelib,
                  core_kernel,
@@ -45,4 +46,5 @@ Library bignum
                  sexplib,
                  threads,
                  typerep_lib,
-                 zarith
+                 zarith,
+                 num
