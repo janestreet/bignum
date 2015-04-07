@@ -1,10 +1,10 @@
 # OASIS_START
-# DO NOT EDIT (digest: 017bccd3afac2b233163cd7aa8fecf44)
-version = "112.24.00"
+# DO NOT EDIT (digest: f49bfb89de7da95de715d78e795a7f6d)
+version = "112.24.01"
 description =
 "Core-flavoured wrapper around zarith's arbitrary-precision rationals"
 requires =
-"bin_prot comparelib core_kernel pa_bench pa_ounit pa_test sexplib threads typerep_lib zarith"
+"bin_prot comparelib core_kernel pa_bench pa_ounit pa_test sexplib threads typerep_lib zarith num"
 archive(byte) = "bignum.cma"
 archive(byte, plugin) = "bignum.cma"
 archive(native) = "bignum.cmxa"
