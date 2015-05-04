@@ -16,7 +16,7 @@ XStdFilesREADME:  false
 BuildTools:       ocamlbuild, camlp4o
 
 Library bignum
-  Path:          lib
+  Path:          src
   FindlibName:   bignum
   Pack:          true
   Modules:       Bigint,
