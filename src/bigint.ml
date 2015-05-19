@@ -1,6 +1,6 @@
 open Core_kernel.Std
 
-module Z = Zarith_1_2.Z
+module Z = Zarith_1_3.Z
 ;;
 
 type t = Z.t with typerep(abstract)
@@ -83,7 +83,7 @@ module Stable = struct
     end
 
     include Sexpable.Of_stringable( T0 )
-    include Bin_prot.Utils.Make_binable( T0 )
+    include Binable.Of_binable (T0.Binable) (T0)
     include T0
     ;;
 
@@ -318,12 +318,6 @@ TEST_UNIT "random" =
   done
 ;;
 
-BENCH_FUN "random" =
-  let state = Random.State.make [| 1 ; 2 ; 3 |] in
-  let range = shift_left one 10_000 in
-  fun () -> random ~state range
-;;
-
 include Core_kernel.Int_conversions.Make_hex(struct
 
   type nonrec t = t with bin_io, compare, typerep
@@ -357,53 +351,6 @@ include Core_kernel.Int_conversions.Make_hex(struct
 end)
 ;;
 
-BENCH_MODULE "vs. Big_int" = struct
-
-  let elt_self i = pow (of_int_exn 1_000_000_000) (of_int_exn (Int.succ i))
-  let elt_other i = Big_int.power_int_positive_int 1_000_000_000 (Int.succ i)
-  ;;
-
-  let count = 4
-  ;;
-
-  let array_self = Array.init count ~f:elt_self
-  let array_other = Array.init count ~f:elt_other
-  ;;
-
-  BENCH "plus_self" =
-    for i = 0 to Int.pred count do
-      for j = 0 to Int.pred count do
-        ignore (array_self.(i) + array_self.(j) : t);
-      done;
-    done;
-  ;;
-
-  BENCH "plus_other" =
-    for i = 0 to Int.pred count do
-      for j = 0 to Int.pred count do
-        ignore (Big_int.add_big_int array_other.(i) array_other.(j) : Big_int.big_int);
-      done;
-    done;
-  ;;
-
-  BENCH "mult_self" =
-    for i = 0 to Int.pred count do
-      for j = 0 to Int.pred count do
-        ignore (array_self.(i) * array_self.(j) : t);
-      done;
-    done;
-  ;;
-
-  BENCH "mult_other" =
-    for i = 0 to Int.pred count do
-      for j = 0 to Int.pred count do
-        ignore (Big_int.mult_big_int array_other.(i) array_other.(j) : Big_int.big_int);
-      done;
-    done;
-  ;;
-
-end
-;;
 
 TEST_MODULE "stable bin_io" = struct
 

@@ -1,3 +1,8 @@
+## 112.35.00
+
+- Upgraded from Zarith 1.2 to 1.3.
+- Removed dependence on `Big_int`.
+
 ## 112.24.00
 
 - Fixed exception raised by `Bignum.sexp_of_t` when the denominator is zero.

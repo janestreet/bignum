@@ -19,8 +19,8 @@ val of_int32     : Int32.t   -> t
 val of_int64     : Int64.t   -> t
 val of_nativeint : nativeint -> t
 
-val to_zarith_bigint : t -> Zarith_1_2.Z.t
-val of_zarith_bigint : Zarith_1_2.Z.t -> t
+val to_zarith_bigint : t -> Zarith_1_3.Z.t
+val of_zarith_bigint : Zarith_1_3.Z.t -> t
 
 val num_bits            : [`Bigint_is_unbounded]
 val min_value           : [`Bigint_is_unbounded]

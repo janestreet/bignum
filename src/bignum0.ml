@@ -2,7 +2,7 @@ open Core_kernel.Std
 
 module Stable = struct
   module V1 = struct
-    module Zarith = Zarith_1_2
+    module Zarith = Zarith_1_3
     module Z = Zarith.Z
 
     include Zarith.Q
@@ -38,43 +38,43 @@ module Stable = struct
       let decimal_mover = of_int 1_000_000_000 in
       let shift_len     = String.length (to_string decimal_mover) - 1 in
       (fun t ->
-        let neg     = t < zero in
-        let shifted = mul (abs t) decimal_mover in
-        let num,den = shifted.num,shifted.den in
-        let s       = Z.to_string (Z.div num den) in
-        let rec dec_end_pos pos count =
-          if pos < 0 || count = shift_len then None
-          else begin
-            if Char.(=) s.[pos] '0' then dec_end_pos (pos - 1) (count + 1)
-            else (Some pos)
-          end
-        in
-        let len = String.length s in
-        let int_part,dec_part =
-          match dec_end_pos (String.length s - 1) 0 with
-          | None ->
-            let int_part =
-              if len > shift_len then String.sub s ~pos:0 ~len:(len - shift_len)
-              else ""
-            in
-            int_part, ""
-          | Some end_pos ->
-            let int_len  = if len > shift_len then len - shift_len else 0 in
-            let int_part = if int_len > 0 then String.sub s ~pos:0 ~len:int_len else "" in
-            let dec_pad  =
-              if len >= shift_len then "" else String.make (shift_len - len) '0'
-            in
-            let dec_part = dec_pad ^ String.sub s ~pos:int_len ~len:(end_pos - int_len + 1) in
-            int_part,dec_part
-        in
-        match neg,int_part,dec_part with
-        | _,"",""    -> "0"
-        | true,"",_  -> "-0." ^ dec_part
-        | false,"",_ -> "0." ^ dec_part
-        | true,_,""  -> "-" ^ int_part
-        | false,_,"" -> int_part
-        | true,_,_   -> "-" ^ int_part ^ "." ^ dec_part
-        | false,_,_  -> int_part ^ "." ^ dec_part)
+         let neg     = t < zero in
+         let shifted = mul (abs t) decimal_mover in
+         let num,den = shifted.num,shifted.den in
+         let s       = Z.to_string (Z.div num den) in
+         let rec dec_end_pos pos count =
+           if pos < 0 || count = shift_len then None
+           else begin
+             if Char.(=) s.[pos] '0' then dec_end_pos (pos - 1) (count + 1)
+             else (Some pos)
+           end
+         in
+         let len = String.length s in
+         let int_part,dec_part =
+           match dec_end_pos (String.length s - 1) 0 with
+           | None ->
+             let int_part =
+               if len > shift_len then String.sub s ~pos:0 ~len:(len - shift_len)
+               else ""
+             in
+             int_part, ""
+           | Some end_pos ->
+             let int_len  = if len > shift_len then len - shift_len else 0 in
+             let int_part = if int_len > 0 then String.sub s ~pos:0 ~len:int_len else "" in
+             let dec_pad  =
+               if len >= shift_len then "" else String.make (shift_len - len) '0'
+             in
+             let dec_part = dec_pad ^ String.sub s ~pos:int_len ~len:(end_pos - int_len + 1) in
+             int_part,dec_part
+         in
+         match neg,int_part,dec_part with
+         | _,"",""    -> "0"
+         | true,"",_  -> "-0." ^ dec_part
+         | false,"",_ -> "0." ^ dec_part
+         | true,_,""  -> "-" ^ int_part
+         | false,_,"" -> int_part
+         | true,_,_   -> "-" ^ int_part ^ "." ^ dec_part
+         | false,_,_  -> int_part ^ "." ^ dec_part)
     ;;
 
     let to_string t =
@@ -200,8 +200,8 @@ module Stable = struct
     ;;
 
     TEST = Sexp.equal
-      (sexp_of_t (of_int 1 / of_int 3))
-      Sexp.O.(List [Atom "0.333333333"; Atom "+"; Atom "1/3000000000"])
+             (sexp_of_t (of_int 1 / of_int 3))
+             Sexp.O.(List [Atom "0.333333333"; Atom "+"; Atom "1/3000000000"])
 
     (* these are down here instead of with of_string
        because <:test_result< t >> uses sexp_of_t *)
@@ -212,16 +212,16 @@ module Stable = struct
           (of_string s);
       in
       List.iter
-      (* All representable exactly as floats *)
-      [ "0"; ".0"; "0."; "00"
-      ; "1"; ".5"; "1."; "01"
-      ; "0.25"; "0.0625"; ".0625"; "01.0625"
-      ; "1.375"; "1.75"; "99.9375"
-      ; "1.2e5"; "1.2E5"; "0.5e0"; "125e-3"
-      ] ~f:(fun s ->
-        as_float s;
-        as_float ("+" ^ s);
-        as_float ("-" ^ s))
+        (* All representable exactly as floats *)
+        [ "0"; ".0"; "0."; "00"
+        ; "1"; ".5"; "1."; "01"
+        ; "0.25"; "0.0625"; ".0625"; "01.0625"
+        ; "1.375"; "1.75"; "99.9375"
+        ; "1.2e5"; "1.2E5"; "0.5e0"; "125e-3"
+        ] ~f:(fun s ->
+          as_float s;
+          as_float ("+" ^ s);
+          as_float ("-" ^ s))
 
     let t_of_sexp s =
       match s with
@@ -237,21 +237,17 @@ module Stable = struct
     TEST = t_of_sexp (sexp_of_t infinity)     = infinity
     TEST = t_of_sexp (sexp_of_t neg_infinity) = neg_infinity
 
-    include Bin_prot.Utils.Make_binable (struct
-      type t' = t
-      type t  = t'
-      module Binable = struct
-        type t = string with bin_io
-      end
+    include Binable.Of_binable (String) (struct
+        type nonrec t  = t
 
-      let to_binable t = Zarith.Q.to_string t
-      let of_binable s = Zarith.Q.of_string s
+        let to_binable t = Zarith.Q.to_string t
+        let of_binable s = Zarith.Q.of_string s
 
-      TEST = of_binable (to_binable nan)          = nan
-      TEST = of_binable (to_binable infinity)     = infinity
-      TEST = of_binable (to_binable neg_infinity) = neg_infinity
+        TEST = of_binable (to_binable nan)          = nan
+        TEST = of_binable (to_binable infinity)     = infinity
+        TEST = of_binable (to_binable neg_infinity) = neg_infinity
 
-    end)
+      end)
   end
   module V2 = struct
     include V1
@@ -281,104 +277,105 @@ module Stable = struct
         | Other
       with bin_io, variants
     end
-    include Bin_prot.Utils.Make_binable(struct
-      module Binable = struct
-        type t =
-          | Zero
-          | Int of int
-          | Over_10 of int
-          | Over_100 of int
-          | Over_1_000 of int
-          | Over_10_000 of int
-          | Over_100_000 of int
-          | Over_1_000_000 of int
-          | Over_10_000_000 of int
-          | Over_100_000_000 of int
-          | Over_int of int * int
-          | Other of V1.t
-        with bin_io, variants
-      end
-      type t = V1.t
 
-      TEST "tag/binable constructors in sync" =
-        List.for_all2_exn Tag.Variants.descriptions Binable.Variants.descriptions
-          ~f:(fun (tag_name, _) (bin_name, _) -> String.equal tag_name bin_name)
+    module Bin_rep = struct
+      type t =
+        | Zero
+        | Int of int
+        | Over_10 of int
+        | Over_100 of int
+        | Over_1_000 of int
+        | Over_10_000 of int
+        | Over_100_000 of int
+        | Over_1_000_000 of int
+        | Over_10_000_000 of int
+        | Over_100_000_000 of int
+        | Over_int of int * int
+        | Other of V1.t
+      with bin_io, variants
+    end
+    include Binable.Of_binable (Bin_rep) (struct
+        type t = V1.t
 
-      (* To prevent a silent overflow that would result in a wrong result,
-         we only optimise after having checked that the numerator will still fit in an int
-         after having been multiplied by (i / d).*)
-      (* pre condition: i > 0, d > 0 and d divides i *)
-      let check_overflow f ~n ~d i =
-        (* Let p = i / d. p is an integer (cf pre condition). We have i = p.d.
-               n <= Max / i * d = Max / p.d * d
-          ->   n * p <= Max / p.d * d.p, by multiplying by p on both sides.
-          ->   n * p <= Max, because (Max / pd) * pd = pd q,
-                             where Max = pd q + r, with 0 <= r < pd
-          So if n is positive, n <= Max / i * d, implies n * (i / d) <= Max.
-          If n is negative, n >= - Max / i * d , implies -n <= Max / i * d
-          which implies -n * p <= Max, see above.
+        TEST "tag/binable constructors in sync" =
+          List.for_all2_exn Tag.Variants.descriptions Bin_rep.Variants.descriptions
+            ~f:(fun (tag_name, _) (bin_name, _) -> String.equal tag_name bin_name)
+
+        (* To prevent a silent overflow that would result in a wrong result,
+           we only optimise after having checked that the numerator will still fit in an int
+           after having been multiplied by (i / d).*)
+        (* pre condition: i > 0, d > 0 and d divides i *)
+        let check_overflow f ~n ~d i =
+          (* Let p = i / d. p is an integer (cf pre condition). We have i = p.d.
+             n <= Max / i * d = Max / p.d * d
+             ->   n * p <= Max / p.d * d.p, by multiplying by p on both sides.
+             ->   n * p <= Max, because (Max / pd) * pd = pd q,
+             where Max = pd q + r, with 0 <= r < pd
+             So if n is positive, n <= Max / i * d, implies n * (i / d) <= Max.
+             If n is negative, n >= - Max / i * d , implies -n <= Max / i * d
+             which implies -n * p <= Max, see above.
              -n * p <= Max implies n * p >= -Max > Min.
-        *)
-        let max_n = Int.((max_value / i) * d) in
-        if Int.(n > max_n || n < -max_n) then Binable.Over_int(n, d)
-        else f Int.O.(n * (i / d))
+          *)
+          let max_n = Int.((max_value / i) * d) in
+          if Int.(n > max_n || n < -max_n) then Bin_rep.Over_int(n, d)
+          else f Int.O.(n * (i / d))
 
-      let to_binable t =
-        if t = V1.zero then Binable.Zero
-        else
-          let num = t.num in
-          let den = t.den in
-          if not (Z.fits_int num && Z.fits_int den) then
-            Binable.Other t
+        let to_binable t =
+          if t = V1.zero then Bin_rep.Zero
           else
-            (* Both num and den fits in an int each *)
-            let n = Z.to_int num in (* Z.fits_int num *)
-            let d = Z.to_int den in (* Z.fits_int den *)
-            let ( = ) = Core_kernel.Std.Int.( = ) in
-            let ( mod ) = Pervasives.( mod ) in
-            if d = 0 then Binable.Other t
-            else if d = 1 then Binable.Int n
-            else if 10_000 mod d = 0
-            then
-              begin
-                if 100 mod d = 0
-                then if 10 mod d = 0
-                  then check_overflow Binable.over_10 ~n ~d 10
-                  else check_overflow Binable.over_100 ~n ~d 100
-                else if 1_000 mod d = 0
-                  then check_overflow Binable.over_1_000 ~n ~d 1_000
-                  else check_overflow Binable.over_10_000 ~n ~d 10_000
-            end
-            else if 100_000_000 mod d = 0 then
-              begin
-                if 1_000_000 mod d = 0
-                then if 100_000 mod d = 0
-                  then check_overflow Binable.over_100_000 ~n ~d 100_000
-                  else check_overflow Binable.over_1_000_000 ~n ~d 1_000_000
-                else if 10_000_000 mod d = 0
-                  then check_overflow Binable.over_10_000_000 ~n ~d 10_000_000
-                  else check_overflow Binable.over_100_000_000 ~n ~d 100_000_000
-              end
-            else Binable.Over_int (n, d)
-      ;;
+            let num = t.num in
+            let den = t.den in
+            if not (Z.fits_int num && Z.fits_int den) then
+              Bin_rep.Other t
+            else
+              (* Both num and den fits in an int each *)
+              let n = Z.to_int num in (* Z.fits_int num *)
+              let d = Z.to_int den in (* Z.fits_int den *)
+              let ( = ) = Core_kernel.Std.Int.( = ) in
+              let ( mod ) = Pervasives.( mod ) in
+              if d = 0 then Bin_rep.Other t
+              else if d = 1 then Bin_rep.Int n
+              else if 10_000 mod d = 0
+              then
+                begin
+                  if 100 mod d = 0
+                  then if 10 mod d = 0
+                    then check_overflow Bin_rep.over_10 ~n ~d 10
+                    else check_overflow Bin_rep.over_100 ~n ~d 100
+                  else if 1_000 mod d = 0
+                  then check_overflow Bin_rep.over_1_000 ~n ~d 1_000
+                  else check_overflow Bin_rep.over_10_000 ~n ~d 10_000
+                end
+              else if 100_000_000 mod d = 0 then
+                begin
+                  if 1_000_000 mod d = 0
+                  then if 100_000 mod d = 0
+                    then check_overflow Bin_rep.over_100_000 ~n ~d 100_000
+                    else check_overflow Bin_rep.over_1_000_000 ~n ~d 1_000_000
+                  else if 10_000_000 mod d = 0
+                  then check_overflow Bin_rep.over_10_000_000 ~n ~d 10_000_000
+                  else check_overflow Bin_rep.over_100_000_000 ~n ~d 100_000_000
+                end
+              else Bin_rep.Over_int (n, d)
+        ;;
 
-      let of_binable =
-        let open Zarith.Q in
-        function
-        | Binable.Zero    -> zero
-        | Binable.Int i   -> of_int i
-        | Binable.Over_int (n, d) -> of_ints n d
-        | Binable.Over_10 n -> of_ints n 10
-        | Binable.Over_100 n -> of_ints n 100
-        | Binable.Over_1_000 n -> of_ints n 1_000
-        | Binable.Over_10_000 n -> of_ints n 10_000
-        | Binable.Over_100_000 n -> of_ints n 100_000
-        | Binable.Over_1_000_000 n -> of_ints n 1_000_000
-        | Binable.Over_10_000_000 n -> of_ints n 10_000_000
-        | Binable.Over_100_000_000 n -> of_ints n 100_000_000
-        | Binable.Other o -> o
-      ;;
-    end)
+        let of_binable =
+          let open Zarith.Q in
+          function
+          | Bin_rep.Zero    -> zero
+          | Bin_rep.Int i   -> of_int i
+          | Bin_rep.Over_int (n, d) -> of_ints n d
+          | Bin_rep.Over_10 n -> of_ints n 10
+          | Bin_rep.Over_100 n -> of_ints n 100
+          | Bin_rep.Over_1_000 n -> of_ints n 1_000
+          | Bin_rep.Over_10_000 n -> of_ints n 10_000
+          | Bin_rep.Over_100_000 n -> of_ints n 100_000
+          | Bin_rep.Over_1_000_000 n -> of_ints n 1_000_000
+          | Bin_rep.Over_10_000_000 n -> of_ints n 10_000_000
+          | Bin_rep.Over_100_000_000 n -> of_ints n 100_000_000
+          | Bin_rep.Other o -> o
+        ;;
+      end)
 
     let bin_read_t buf ~pos_ref =
       match Tag.bin_read_t buf ~pos_ref with
@@ -489,7 +486,7 @@ module Stable = struct
     (* Test for Over_int *)
     TEST_UNIT = test ((Current.of_int 2) / (Current.of_int 3))
     (* Test for overflow  : 2^62 / 25 would be Over_100(2^64) and should overflow,
-        and fallback on Other(2^62, 25) *)
+       and fallback on Other(2^62, 25) *)
     TEST_UNIT = test ((Current.mul_2exp Current.one 62) / (Current.of_int 25))
     TEST_UNIT = test ((Current.mul_2exp (Current.of_int (-1)) 62) / (Current.of_int 25))
 
@@ -556,71 +553,7 @@ module Stable = struct
     TEST_UNIT = List.iter numbers ~f:(fun s -> test (V1.of_string s))
     ;;
   end
-
-  BENCH_MODULE "Bignum binprot" = struct
-    open Core_kernel.Std
-    let buf = Bigstring.create 128
-
-    let numbers = List.map ~f:V1.of_string [
-      "-100.00000000";
-      "100.00000000";
-      "0.00000000";
-      "-200.00000000";
-      "200.00000000";
-      "-300.00000000";
-      "300.00000000";
-      "-400.00000000";
-      "-1000.00000000";
-      "1000.00000000";
-      "-1.00000000";
-      "400.00000000";
-      "-500.00000000";
-      "1.00000000";
-      "500.00000000";
-      "-600.00000000";
-      "-2000.00000000";
-      "2.00000000";
-      "-2.00000000";
-      "600.00000000";
-      "0.20720000";
-      "-0.20227524";
-      "0.18800000";
-      "0.16550000";
-      "0.15950000";
-      "0.13000000";
-      "0.12950000";
-      "0.11950000";
-      "-0.07232871";
-      "0.05950000";
-      "-0.05424653";
-      "0.04600437";
-      "0.04600000";
-      "0.04050000";
-      "-0.03616435";
-      "0.03550391";
-      "0.03550000";
-      "0.02000000";
-      "0.01950000";
-      "0.01050000";
-      "-316673.67291835";
-      "3423.123456789";
-      "-3423.1234567891";
-    ]
-    ;;
-    BENCH "roundtrip compact" = List.iter numbers ~f:(fun b ->
-      let _ : int = V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b in
-      let _ : V2.t = V2.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0) in
-      ())
-    ;;
-
-    BENCH "roundtrip classic" = List.iter numbers ~f:(fun b ->
-      let _ : int = V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b in
-      let _ : V1.t = V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0) in
-      ())
-    ;;
-  end
 end
-
 
 module T = Stable.Current
 include T
@@ -684,9 +617,9 @@ let ( ** ) t pow =
     if Int.equal n 0
     then result
     else
-      if Int.equal (n % 2) 0
-      then loop result (squares * squares) (Int.(/) n 2)
-      else loop (result * squares) (squares * squares) Int.((n - 1) / 2)
+    if Int.equal (n % 2) 0
+    then loop result (squares * squares) (Int.(/) n 2)
+    else loop (result * squares) (squares * squares) Int.((n - 1) / 2)
   in
   (* Int.abs Int.min_value < 0, so have to handle it separately.
      Although raising anything other than one to that power would probably eat your entire
@@ -709,10 +642,10 @@ TEST = ten ** 12 = trillion
 TEST = ten ** (-2) = of_string "0.01"
 TEST = one ** Int.min_value = one
 TEST = of_string "2" ** 1000 = of_string
-  ("107150860718626732094842504906000181056140481170553360744375038837035105112493612249"
-  ^"319837881569585812759467291755314682518714528569231404359845775746985748039345677748"
-  ^"242309854210746050623711418779541821530464749835819412673987675591655439460770629145"
-  ^"71196477686542167660429831652624386837205668069376")
+                                 ("107150860718626732094842504906000181056140481170553360744375038837035105112493612249"
+                                  ^"319837881569585812759467291755314682518714528569231404359845775746985748039345677748"
+                                  ^"242309854210746050623711418779541821530464749835819412673987675591655439460770629145"
+                                  ^"71196477686542167660429831652624386837205668069376")
 
 let half = of_ints 1 2
 
@@ -775,62 +708,6 @@ let round_decimal ?dir ~digits t =
   then round_integer ?dir t
   else round ?dir ~to_multiple_of:(tenth ** digits) t
 ;;
-
-BENCH_MODULE "round" = struct
-  let numbers = List.map ~f:of_string [
-    "-100.00000000";
-    "100.00000000";
-    "0.00000000";
-    "-200.00000000";
-    "200.00000000";
-    "-300.00000000";
-    "300.00000000";
-    "-400.00000000";
-    "-1000.00000000";
-    "1000.00000000";
-    "-1.00000000";
-    "400.00000000";
-    "-500.00000000";
-    "1.00000000";
-    "500.00000000";
-    "-600.00000000";
-    "-2000.00000000";
-    "2.00000000";
-    "-2.00000000";
-    "600.00000000";
-    "0.20720000";
-    "-0.20227524";
-    "0.18800000";
-    "0.16550000";
-    "0.15950000";
-    "0.13000000";
-    "0.12950000";
-    "0.11950000";
-    "-0.07232871";
-    "0.05950000";
-    "-0.05424653";
-    "0.04600437";
-    "0.04600000";
-    "0.04050000";
-    "-0.03616435";
-    "0.03550391";
-    "0.03550000";
-    "0.02000000";
-    "0.01950000";
-    "0.01050000";
-    "-316673.67291835";
-    "3423.123456789";
-    "-3423.1234567891";
-  ]
-  ;;
-
-  BENCH_INDEXED "round_decimal" digits [0;3;6;9] =
-    fun () ->
-    List.iter numbers ~f:(fun number -> ignore (round_decimal number ~digits : t))
-
-  BENCH "round" =
-    List.iter numbers ~f:(fun number -> ignore (round number : t))
-end
 
 TEST_MODULE "round" = struct
 
@@ -944,11 +821,11 @@ TEST_MODULE "round" = struct
 end
 
 include (Hashable.Make_binable (struct
-  include T
+           include T
 
-  let compare = compare
-  let hash    = Hashtbl.hash
-end) : Hashable.S_binable with type t := t)
+           let compare = compare
+           let hash    = Hashtbl.hash
+         end) : Hashable.S_binable with type t := t)
 
 module O = struct
   let ( + ) = ( + )
@@ -957,7 +834,8 @@ module O = struct
   let ( * ) = ( * )
   let ( ** ) = ( ** )
 
-  include (Replace_polymorphic_compare : Core_kernel.Polymorphic_compare_intf.Infix with type t := t)
+  include (Replace_polymorphic_compare :
+             Core_kernel.Polymorphic_compare_intf.Infix with type t := t)
 
   let abs = abs
   let neg = neg
