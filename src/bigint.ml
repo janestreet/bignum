@@ -234,6 +234,158 @@ end
 include (O : module type of O with type t := t)
 ;;
 
+let is_even x = equal zero (bit_and x one)
+
+let midpoint x y =
+  let midpoint = shift_right (x + y) 1 in
+  if Bool.equal (is_even x) (is_even y)
+  then `Single midpoint
+  else `Double (midpoint, succ midpoint)
+
+let rec gen_between_inclusive ~lower_bound ~upper_bound =
+  let open Quickcheck.Generator in
+  if lower_bound > upper_bound
+  then failure
+  else if equal lower_bound upper_bound
+  then singleton lower_bound
+  else if equal (succ lower_bound) upper_bound
+  then doubleton lower_bound upper_bound
+  else
+    match midpoint lower_bound upper_bound with
+    | `Single midpoint ->
+      union
+        [ singleton lower_bound
+        ; of_fun (fun () ->
+            gen_between_inclusive
+              ~lower_bound:(succ lower_bound)
+              ~upper_bound:(pred midpoint))
+        ; singleton midpoint
+        ; of_fun (fun () ->
+            gen_between_inclusive
+              ~lower_bound:(succ midpoint)
+              ~upper_bound:(pred upper_bound))
+        ; singleton upper_bound
+        ]
+    | `Double (lower_mid, upper_mid) ->
+      union
+        [ singleton lower_bound
+        ; of_fun (fun () ->
+            gen_between_inclusive
+              ~lower_bound:(succ lower_bound)
+              ~upper_bound:(pred lower_mid))
+        ; singleton lower_mid
+        ; singleton upper_mid
+        ; of_fun (fun () ->
+            gen_between_inclusive
+              ~lower_bound:(succ upper_mid)
+              ~upper_bound:(pred upper_bound))
+        ; singleton upper_bound
+        ]
+
+let gen_positive =
+  let open Quickcheck.Generator in
+  let rec loop exponent =
+    let lower_bound = shift_left one exponent in
+    let upper_bound = pred (shift_left lower_bound 1) in
+    union
+      [ gen_between_inclusive ~lower_bound ~upper_bound
+      ; of_fun (fun () -> loop (Int.succ exponent))
+      ]
+  in
+  loop 0
+
+let gen_negative =
+  let open Quickcheck.Generator in
+  gen_positive
+  >>| neg
+
+let gen =
+  let open Quickcheck.Generator in
+  union
+    [ singleton zero
+    ; gen_positive
+    ; gen_negative
+    ]
+
+let gen_between ~lower_bound ~upper_bound =
+  let open Quickcheck.Generator in
+  match lower_bound, upper_bound with
+  | Unbounded, Unbounded -> gen
+  | Unbounded, Excl upper ->
+    map gen_negative ~f:(fun x -> x + upper)
+  | Unbounded, Incl upper ->
+    let upper = succ upper in
+    map gen_negative ~f:(fun x -> x + upper)
+  | Excl lower, Unbounded ->
+    map gen_positive ~f:(fun x -> x + lower)
+  | Incl lower, Unbounded ->
+    let lower = pred lower in
+    map gen_positive ~f:(fun x -> x + lower)
+  | Incl lower_bound, Incl upper_bound ->
+    gen_between_inclusive ~lower_bound ~upper_bound
+  | Incl lower_bound, Excl upper_bound ->
+    let upper_bound = pred upper_bound in
+    gen_between_inclusive ~lower_bound ~upper_bound
+  | Excl lower_bound, Incl upper_bound ->
+    let lower_bound = succ lower_bound in
+    gen_between_inclusive ~lower_bound ~upper_bound
+  | Excl lower_bound, Excl upper_bound ->
+    let lower_bound = succ lower_bound in
+    let upper_bound = pred upper_bound in
+    gen_between_inclusive ~lower_bound ~upper_bound
+
+let rec obs_upper_bits ~lower_bound ~upper_bound =
+  let open Quickcheck.Observer in
+  if lower_bound > upper_bound
+  then failwith "Observer.obs_between_inclusive: lower_bound > upper_bound"
+  else if lower_bound = upper_bound then singleton ()
+  else
+    let midpoint = shift_right (lower_bound + upper_bound) 1 in
+    of_predicate ~f:(fun x -> x <= midpoint)
+      ~f_sexp:(fun () -> <:sexp_of< [`le of t] >> (`le midpoint))
+      (of_fun (fun () -> obs_lower_bits ~lower_bound ~upper_bound:midpoint))
+      (of_fun (fun () -> obs_lower_bits ~lower_bound:(midpoint+one) ~upper_bound))
+
+and obs_lower_bits ~lower_bound ~upper_bound =
+  let open Quickcheck.Observer in
+  if lower_bound > upper_bound
+  then failwith "Observer.obs_between_inclusive: lower_bound > upper_bound"
+  else if lower_bound = upper_bound then singleton ()
+  else
+    tuple2 bool
+      (obs_upper_bits
+         ~lower_bound:(shift_right lower_bound 1)
+         ~upper_bound:(shift_right upper_bound 1))
+    |> unmap ~f:(fun x -> is_even x, shift_right x 1)
+         ~f_sexp:(fun () -> Sexp.Atom "is_even_and_all_but_least_significant_bit")
+
+let obs_between_inclusive = obs_lower_bits
+
+let obs_positive =
+  let open Quickcheck.Observer in
+  let rec loop bits =
+    let lower_bound = shift_left one (Int.pred bits) in
+    let upper_bound = pred (shift_left one bits) in
+    of_predicate ~f:(fun x -> x <= upper_bound)
+      ~f_sexp:(fun () -> <:sexp_of< [`le of t] >> (`le upper_bound))
+      (obs_between_inclusive ~lower_bound ~upper_bound)
+      (of_fun (fun () -> loop (Int.succ bits)))
+  in
+  loop 1
+
+let obs_negative =
+  let open Quickcheck.Observer in
+  unmap obs_positive ~f:neg ~f_sexp:(fun () -> Sexp.Atom "Bigint.neg")
+
+let obs =
+  let open Quickcheck.Observer in
+  comparison ~compare
+    ~eq:zero
+    ~lt:obs_negative
+    ~gt:obs_positive
+    ~compare_sexp:(fun () -> Sexp.Atom "Bigint.compare")
+    ~sexp_of_eq:<:sexp_of< t >>
+
 module Random_internal : sig
   val random :  ?state:Random.State.t -> t -> t
 end = struct

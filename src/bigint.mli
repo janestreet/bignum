@@ -27,6 +27,13 @@ val min_value           : [`Bigint_is_unbounded]
 val max_value           : [`Bigint_is_unbounded]
 val shift_right_logical : [`Bigint_is_unbounded]
 
+val obs : t Quickcheck.Observer.t
+val gen : t Quickcheck.Generator.t
+val gen_between
+  :  lower_bound : t Comparable.bound
+  -> upper_bound : t Comparable.bound
+  -> t Quickcheck.Generator.t
+
 (** [random t] produces a value uniformly distributed between [zero] (inclusive) and
     [t] (exclusive), or raises if [t <= zero]. *)
 val random : ?state:Random.State.t -> t -> t

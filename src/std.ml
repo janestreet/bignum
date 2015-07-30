@@ -1,2 +1,2 @@
-module Bignum = Bignum0
 module Bigint = Bigint
+module Bignum = Bignum0

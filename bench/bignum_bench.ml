@@ -55,20 +55,20 @@ BENCH_MODULE "Bignum binprot" = struct
   let buf = Bigstring.create 128
 
   BENCH "roundtrip compact" = List.iter numbers ~f:(fun b ->
-    let _ : int =
+    let (_ : int) =
       Stable.V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b
     in
-    let _ : Stable.V2.t =
+    let (_ : Stable.V2.t) =
       Stable.V2.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0)
     in
     ())
   ;;
 
   BENCH "roundtrip classic" = List.iter numbers ~f:(fun b ->
-    let _ : int =
+    let (_ : int) =
       Stable.V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b
     in
-    let _ : Stable.V1.t =
+    let (_ : Stable.V1.t) =
       Stable.V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0)
     in
     ())

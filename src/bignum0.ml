@@ -434,9 +434,9 @@ module Stable = struct
 
     let roundtrip b =
       for pos = 0 to 17 do
-        let _ : int = V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
+        let (_ : int) = V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
         let result1  = V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref pos) in
-        let _ : int = V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
+        let (_ : int) = V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
         let result2  = V2.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref pos) in
         <:test_eq< V1.t >> b result1;
         <:test_eq< V2.t >> b result2;
@@ -859,3 +859,210 @@ module O = struct
   let of_int    = of_int
   let of_float  = of_float
 end
+
+
+
+let rec gen_stern_brocot ~lower_numer ~lower_denom ~upper_numer ~upper_denom =
+  let open Quickcheck.Generator in
+  let numer = Bigint.(lower_numer + upper_numer) in
+  let denom = Bigint.(lower_denom + upper_denom) in
+  union
+    [ of_fun (fun () ->
+        gen_stern_brocot
+          ~lower_numer
+          ~lower_denom
+          ~upper_numer:numer
+          ~upper_denom:denom)
+    ; singleton (of_bigint numer / of_bigint denom)
+    ; of_fun (fun () ->
+        gen_stern_brocot
+          ~lower_numer:numer
+          ~lower_denom:denom
+          ~upper_numer
+          ~upper_denom)
+    ]
+
+let gen_greater_than x =
+  let open Quickcheck.Generator in
+  gen_stern_brocot
+    ~lower_numer:Bigint.one
+    ~lower_denom:Bigint.one
+    ~upper_numer:Bigint.one
+    ~upper_denom:Bigint.zero
+  >>| fun y ->
+  (x * y)
+
+let gen_less_than x =
+  let open Quickcheck.Generator in
+  gen_greater_than (neg x) >>| neg
+
+let gen_between_exclusive x y =
+  let open Quickcheck.Generator in
+  gen_stern_brocot
+    ~lower_numer:Bigint.zero
+    ~lower_denom:Bigint.one
+    ~upper_numer:Bigint.one
+    ~upper_denom:Bigint.one
+  >>| fun z ->
+  (x + (z * (y - x)))
+
+let gen_with_negative_and_inverse positive =
+  let open Quickcheck.Generator in
+  let negative = neg positive in
+  of_list [ positive ; negative ; one / positive ; one / negative ]
+
+let rec gen_greater_than_candidates prev bignums =
+  let open Quickcheck.Generator in
+  match bignums with
+  | [] -> gen_greater_than prev
+  | next :: rest ->
+    union
+      [ gen_between_exclusive prev next
+      ; singleton next
+      ; of_fun (fun () -> gen_greater_than_candidates next rest)
+      ]
+
+let gen_finite =
+  let open Quickcheck.Generator in
+  union
+    [ of_list [ zero ; one ; neg one ]
+    ; gen_greater_than_candidates one
+        [ ten ; hundred ; thousand ; million ; billion ; trillion ]
+      >>= gen_with_negative_and_inverse
+    ]
+
+let gen =
+  let open Quickcheck.Generator in
+  union
+    [ of_list [ one / zero ; neg one / zero ; zero / zero ]
+    ; gen_finite
+    ]
+
+let gen_between ~with_undefined ~lower_bound ~upper_bound =
+  let open Quickcheck.Generator in
+  let undef =
+    if with_undefined
+    then [ 1., singleton (zero / zero) ]
+    else []
+  in
+  let lower_inclusive =
+    match lower_bound with
+    | Unbounded -> [ 1., singleton (neg one / zero) ]
+    | Incl lower -> [1., singleton lower]
+    | Excl _ -> []
+  in
+  let upper_inclusive =
+    match upper_bound with
+    | Unbounded -> [ 1., singleton (one / zero) ]
+    | Incl upper -> [1., singleton upper]
+    | Excl _ -> []
+  in
+  let between_exclusive =
+    match lower_bound, upper_bound with
+    | Unbounded, Unbounded -> gen_finite
+    | Unbounded, (Incl upper | Excl upper) ->
+      gen_less_than upper
+    | (Incl lower | Excl lower), Unbounded ->
+      gen_greater_than lower
+    | (Incl lower | Excl lower), (Incl upper | Excl upper) ->
+      gen_between_exclusive lower upper
+  in
+  weighted_union ([ 10., between_exclusive ] @ lower_inclusive @ upper_inclusive @ undef)
+
+let rec obs_stern_brocot ~lower_numer ~lower_denom ~upper_numer ~upper_denom =
+  let open Quickcheck.Observer in
+  let numer = Bigint.(lower_numer + upper_numer) in
+  let denom = Bigint.(lower_denom + upper_denom) in
+  let bignum = (of_bigint numer / of_bigint denom) in
+  comparison ~compare:compare
+    ~eq:bignum
+    ~lt:(of_fun (fun () -> obs_stern_brocot
+                             ~lower_numer ~lower_denom
+                             ~upper_numer:numer ~upper_denom:denom))
+    ~gt:(of_fun (fun () -> obs_stern_brocot
+                             ~lower_numer:numer ~lower_denom:denom
+                             ~upper_numer ~upper_denom))
+    ~compare_sexp:(fun () -> Sexp.Atom "Bignum.compare")
+    ~sexp_of_eq:sexp_of_t
+
+let obs_between_exclusive x y =
+  let open Quickcheck.Observer in
+  unmap
+    (obs_stern_brocot
+       ~lower_numer:Bigint.zero
+       ~lower_denom:Bigint.one
+       ~upper_numer:Bigint.one
+       ~upper_denom:Bigint.one)
+    ~f:(fun z -> ((z - x) / (y - x)))
+    ~f_sexp:(fun () ->
+      <:sexp_of< [`map_unit_range_to_between of t * t] >>
+        (`map_unit_range_to_between (x, y)))
+
+let obs_greater_than x =
+  let open Quickcheck.Observer in
+  unmap
+    (obs_stern_brocot
+       ~lower_numer:Bigint.one
+       ~lower_denom:Bigint.one
+       ~upper_numer:Bigint.one
+       ~upper_denom:Bigint.zero)
+    ~f:(fun z -> (z / x))
+    ~f_sexp:(fun () -> <:sexp_of< [`divided_by of t] >> (`divided_by x))
+
+let rec obs_greater_than_candidates prev bignums =
+  let open Quickcheck.Observer in
+  match bignums with
+  | [] -> obs_greater_than prev
+  | next :: rest ->
+    comparison ~compare
+      ~eq:next
+      ~lt:(obs_between_exclusive prev next)
+      ~gt:(obs_greater_than_candidates next rest)
+      ~compare_sexp:(fun () -> Sexp.Atom "Bignum.compare")
+      ~sexp_of_eq:sexp_of_t
+
+(* [obs_positive_greater_than_one] produces observers that distinguish larger numbers
+   in fewer steps than [obs_greater_than one]. The latter only distinguishes 1,000
+   from 1,001 at a recursion depth of 1,000.  With the candidates approach, it does so at
+   a depth of about 3. *)
+let obs_positive_greater_than_one =
+  obs_greater_than_candidates one
+    [ ten ; hundred ; thousand ; million ; billion ; trillion ]
+
+let obs_positive_less_than_one =
+  let open Quickcheck.Observer in
+  unmap obs_positive_greater_than_one
+    ~f:inverse
+    ~f_sexp:(fun () -> Sexp.Atom "Bignum.inverse")
+
+let obs_positive =
+  let open Quickcheck.Observer in
+  comparison ~compare
+    ~eq:one
+    ~lt:obs_positive_less_than_one
+    ~gt:obs_positive_greater_than_one
+    ~compare_sexp:(fun () -> Sexp.Atom "Bignum.compare")
+    ~sexp_of_eq:sexp_of_t
+
+let obs_negative =
+  let open Quickcheck.Observer in
+  unmap obs_positive ~f:neg ~f_sexp:(fun () -> Sexp.Atom "Bignum.neg")
+
+let obs_finite =
+  let open Quickcheck.Observer in
+  comparison ~compare
+    ~eq:zero
+    ~lt:obs_negative
+    ~gt:obs_positive
+    ~compare_sexp:(fun () -> Sexp.Atom "Bignum.compare")
+    ~sexp_of_eq:sexp_of_t
+
+let is_finite bignum =
+  not (is_zero (den bignum))
+
+let obs =
+  let open Quickcheck.Observer in
+  of_predicate ~f:is_finite ~f_sexp:(fun () -> Sexp.Atom "bignum_is_finite")
+    obs_finite
+    (of_list [ zero / zero ; one / zero ; neg one / zero ] ~equal
+       ~sexp_of_elt:sexp_of_t)

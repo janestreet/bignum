@@ -1,3 +1,10 @@
+## 113.00.00
+
+- Fixed a bug in the =Zarith= library's `to_float` function.
+
+    These fixes first introduce tests from the base distribution, and then
+    backport a bugfix to the handling of to_float.
+
 ## 112.35.00
 
 - Upgraded from Zarith 1.2 to 1.3.

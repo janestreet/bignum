@@ -105,6 +105,14 @@ val den_as_bigint : t -> Bigint.t
 
 val pp : Format.formatter -> t -> unit
 
+val obs : t Quickcheck.Observer.t
+val gen : t Quickcheck.Generator.t
+val gen_between
+  :  with_undefined : bool
+  -> lower_bound    : t Comparable.bound
+  -> upper_bound    : t Comparable.bound
+  -> t Quickcheck.Generator.t
+
 module Stable : sig
   module V1 : sig
     type nonrec t = t with sexp, bin_io, compare
@@ -150,4 +158,3 @@ module O : sig
   val of_int    : int -> t
   val of_float  : float -> t
 end
-
