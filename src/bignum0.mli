@@ -8,11 +8,12 @@ type t
     for example, 1/3 <-> (0.333333333 + 1/3000000000).  In string and sexp conversions,
     values with denominator of zero are special-cased: 0/0 <-> "nan", 1/0 <-> "inf", and
     -1/0 <-> "-inf". *)
-include Sexpable   with type t := t
-include Comparable with type t := t
-include Floatable  with type t := t
-include Hashable   with type t := t
-include Binable    with type t := t
+include Sexpable       with type t := t
+include Comparable     with type t := t
+include Floatable      with type t := t
+include Hashable       with type t := t
+include Binable        with type t := t
+include Quickcheckable with type t := t
 
 val zero     : t
 val one      : t
@@ -105,20 +106,22 @@ val den_as_bigint : t -> Bigint.t
 
 val pp : Format.formatter -> t -> unit
 
-val obs : t Quickcheck.Observer.t
-val gen : t Quickcheck.Generator.t
+(** [gen_between ~with_undefined ~lower_bound ~upper_bound] generates a Quickcheck
+    generator like [gen], but restricted to values satisfying [lower_bound] and
+    [upper_bound], plus the undefined value if [with_undefined] is true.  If no values
+    satisfy [lower_bound] and [upper_bound], raises an exception. *)
 val gen_between
   :  with_undefined : bool
-  -> lower_bound    : t Comparable.bound
-  -> upper_bound    : t Comparable.bound
+  -> lower_bound    : t Maybe_bound.t
+  -> upper_bound    : t Maybe_bound.t
   -> t Quickcheck.Generator.t
 
 module Stable : sig
   module V1 : sig
-    type nonrec t = t with sexp, bin_io, compare
+    type nonrec t = t [@@deriving sexp, bin_io, compare]
   end
   module V2 : sig
-    type nonrec t = t with sexp, bin_io, compare
+    type nonrec t = t [@@deriving sexp, bin_io, compare]
   end
 end
 

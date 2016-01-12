@@ -1,6 +1,6 @@
 open Core_kernel.Std
 
-(* Arbitrary-precision integers based on Zarith 1.2.
+(* Arbitrary-precision integers based on Zarith 1.4.
    This implementation should be significantly faster and use less memory than [Big_int].
    See benchmarks labeled "vs. Big_int" in the implementation. *)
 type t
@@ -19,20 +19,13 @@ val of_int32     : Int32.t   -> t
 val of_int64     : Int64.t   -> t
 val of_nativeint : nativeint -> t
 
-val to_zarith_bigint : t -> Zarith_1_3.Z.t
-val of_zarith_bigint : Zarith_1_3.Z.t -> t
+val to_zarith_bigint : t -> Zarith_1_4.Z.t
+val of_zarith_bigint : Zarith_1_4.Z.t -> t
 
 val num_bits            : [`Bigint_is_unbounded]
 val min_value           : [`Bigint_is_unbounded]
 val max_value           : [`Bigint_is_unbounded]
 val shift_right_logical : [`Bigint_is_unbounded]
-
-val obs : t Quickcheck.Observer.t
-val gen : t Quickcheck.Generator.t
-val gen_between
-  :  lower_bound : t Comparable.bound
-  -> upper_bound : t Comparable.bound
-  -> t Quickcheck.Generator.t
 
 (** [random t] produces a value uniformly distributed between [zero] (inclusive) and
     [t] (exclusive), or raises if [t <= zero]. *)
@@ -40,6 +33,6 @@ val random : ?state:Random.State.t -> t -> t
 
 module Stable : sig
   module V1 : sig
-    type nonrec t = t with sexp, bin_io, compare
+    type nonrec t = t [@@deriving sexp, bin_io, compare]
   end
 end

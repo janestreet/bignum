@@ -1,0 +1,7 @@
+version = "$(pkg_version)"
+description = "Core-flavoured wrapper around zarith's arbitrary-precision rationals."
+requires = "bin_prot core_kernel fieldslib num ppx_assert.runtime-lib ppx_bench.runtime-lib ppx_expect.collector ppx_inline_test.runtime-lib sexplib typerep variantslib zarith"
+archive(byte          ) = "bignum.cma"
+archive(native        ) = "bignum.cmxa"
+archive(native, plugin) = "bignum.cmxs"
+exists_if = "bignum.cma"

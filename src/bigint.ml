@@ -1,9 +1,9 @@
 open Core_kernel.Std
 
-module Z = Zarith_1_3.Z
+module Z = Zarith_1_4.Z
 ;;
 
-type t = Z.t with typerep(abstract)
+type t = Z.t [@@deriving typerep ~abstract]
 ;;
 
 module Stable = struct
@@ -63,7 +63,7 @@ module Stable = struct
       ;;
 
       module Binable = struct
-        type t = Zero | Pos of string | Neg of string with bin_io
+        type t = Zero | Pos of string | Neg of string [@@deriving bin_io]
       end
       ;;
 
@@ -82,8 +82,8 @@ module Stable = struct
 
     end
 
-    include Sexpable.Of_stringable( T0 )
-    include Binable.Of_binable (T0.Binable) (T0)
+    include Sexpable.Stable.Of_stringable.V1( T0 )
+    include Binable.Stable.Of_binable.V1 (T0.Binable) (T0)
     include T0
     ;;
 
@@ -234,157 +234,196 @@ end
 include (O : module type of O with type t := t)
 ;;
 
-let is_even x = equal zero (bit_and x one)
+module For_quickcheck = struct
 
-let midpoint x y =
-  let midpoint = shift_right (x + y) 1 in
-  if Bool.equal (is_even x) (is_even y)
-  then `Single midpoint
-  else `Double (midpoint, succ midpoint)
+  let is_even x = equal zero (bit_and x one)
 
-let rec gen_between_inclusive ~lower_bound ~upper_bound =
-  let open Quickcheck.Generator in
-  if lower_bound > upper_bound
-  then failure
-  else if equal lower_bound upper_bound
-  then singleton lower_bound
-  else if equal (succ lower_bound) upper_bound
-  then doubleton lower_bound upper_bound
-  else
-    match midpoint lower_bound upper_bound with
-    | `Single midpoint ->
+  let midpoint x y =
+    let midpoint = shift_right (x + y) 1 in
+    if Bool.equal (is_even x) (is_even y)
+    then `Single midpoint
+    else `Double (midpoint, succ midpoint)
+
+  let bound_to_incl which_side bound =
+    match (bound : _ Maybe_bound.t) with
+    | Unbounded -> None
+    | Incl n    -> Some n
+    | Excl n    ->
+      match which_side with
+      | `Upper -> Some (pred n)
+      | `Lower -> Some (succ n)
+
+  let rec gen_between_inclusive ~lower_bound ~upper_bound =
+    let open Quickcheck.Generator in
+    if lower_bound > upper_bound
+    then failure
+    else if equal lower_bound upper_bound
+    then singleton lower_bound
+    else if equal (succ lower_bound) upper_bound
+    then doubleton lower_bound upper_bound
+    else
+      match midpoint lower_bound upper_bound with
+      | `Single midpoint ->
+        union
+          [ singleton lower_bound
+          ; of_fun (fun () ->
+              gen_between_inclusive
+                ~lower_bound:(succ lower_bound)
+                ~upper_bound:(pred midpoint))
+          ; singleton midpoint
+          ; of_fun (fun () ->
+              gen_between_inclusive
+                ~lower_bound:(succ midpoint)
+                ~upper_bound:(pred upper_bound))
+          ; singleton upper_bound
+          ]
+      | `Double (lower_mid, upper_mid) ->
+        union
+          [ singleton lower_bound
+          ; of_fun (fun () ->
+              gen_between_inclusive
+                ~lower_bound:(succ lower_bound)
+                ~upper_bound:(pred lower_mid))
+          ; singleton lower_mid
+          ; singleton upper_mid
+          ; of_fun (fun () ->
+              gen_between_inclusive
+                ~lower_bound:(succ upper_mid)
+                ~upper_bound:(pred upper_bound))
+          ; singleton upper_bound
+          ]
+
+  let gen_positive =
+    let open Quickcheck.Generator in
+    let rec loop exponent =
+      let lower_bound = shift_left one exponent in
+      let upper_bound = pred (shift_left lower_bound 1) in
       union
-        [ singleton lower_bound
-        ; of_fun (fun () ->
-            gen_between_inclusive
-              ~lower_bound:(succ lower_bound)
-              ~upper_bound:(pred midpoint))
-        ; singleton midpoint
-        ; of_fun (fun () ->
-            gen_between_inclusive
-              ~lower_bound:(succ midpoint)
-              ~upper_bound:(pred upper_bound))
-        ; singleton upper_bound
+        [ gen_between_inclusive ~lower_bound ~upper_bound
+        ; of_fun (fun () -> loop (Int.succ exponent))
         ]
-    | `Double (lower_mid, upper_mid) ->
-      union
-        [ singleton lower_bound
-        ; of_fun (fun () ->
-            gen_between_inclusive
-              ~lower_bound:(succ lower_bound)
-              ~upper_bound:(pred lower_mid))
-        ; singleton lower_mid
-        ; singleton upper_mid
-        ; of_fun (fun () ->
-            gen_between_inclusive
-              ~lower_bound:(succ upper_mid)
-              ~upper_bound:(pred upper_bound))
-        ; singleton upper_bound
-        ]
+    in
+    loop 0
 
-let gen_positive =
-  let open Quickcheck.Generator in
-  let rec loop exponent =
-    let lower_bound = shift_left one exponent in
-    let upper_bound = pred (shift_left lower_bound 1) in
+  let gen_negative =
+    let open Quickcheck.Generator in
+    gen_positive
+    >>| neg
+
+  let gen =
+    let open Quickcheck.Generator in
     union
-      [ gen_between_inclusive ~lower_bound ~upper_bound
-      ; of_fun (fun () -> loop (Int.succ exponent))
+      [ singleton zero
+      ; gen_positive
+      ; gen_negative
       ]
-  in
-  loop 0
 
-let gen_negative =
-  let open Quickcheck.Generator in
-  gen_positive
-  >>| neg
+  let gen_between ~lower_bound ~upper_bound =
+    let open Quickcheck.Generator in
+    match
+      bound_to_incl `Lower lower_bound,
+      bound_to_incl `Upper upper_bound
+    with
+    | None, None -> gen
+    | None, Some upper ->
+      let upper = succ upper in
+      map gen_negative ~f:(fun x -> x + upper)
+    | Some lower, None ->
+      let lower = pred lower in
+      map gen_positive ~f:(fun x -> x + lower)
+    | Some lower, Some upper ->
+      if lower > upper then
+        failwiths "Bigint.gen_between: bounds are crossed"
+          (`lower_bound lower_bound, `upper_bound upper_bound)
+          [%sexp_of: [`lower_bound of t Maybe_bound.t] *
+                     [`upper_bound of t Maybe_bound.t]];
+      gen_between_inclusive ~lower_bound:lower ~upper_bound:upper
 
-let gen =
-  let open Quickcheck.Generator in
-  union
-    [ singleton zero
-    ; gen_positive
-    ; gen_negative
-    ]
+  let rec obs_upper_bits ~lower_bound ~upper_bound =
+    let open Quickcheck.Observer in
+    if lower_bound > upper_bound
+    then failwith "Observer.obs_between_inclusive: lower_bound > upper_bound"
+    else if lower_bound = upper_bound then singleton ()
+    else
+      let midpoint = shift_right (lower_bound + upper_bound) 1 in
+      of_predicate ~f:(fun x -> x <= midpoint)
+        ~f_sexp:(fun () -> [%sexp_of: [`le of t]] (`le midpoint))
+        (of_fun (fun () -> obs_lower_bits ~lower_bound ~upper_bound:midpoint))
+        (of_fun (fun () -> obs_lower_bits ~lower_bound:(midpoint+one) ~upper_bound))
 
-let gen_between ~lower_bound ~upper_bound =
-  let open Quickcheck.Generator in
-  match lower_bound, upper_bound with
-  | Unbounded, Unbounded -> gen
-  | Unbounded, Excl upper ->
-    map gen_negative ~f:(fun x -> x + upper)
-  | Unbounded, Incl upper ->
-    let upper = succ upper in
-    map gen_negative ~f:(fun x -> x + upper)
-  | Excl lower, Unbounded ->
-    map gen_positive ~f:(fun x -> x + lower)
-  | Incl lower, Unbounded ->
-    let lower = pred lower in
-    map gen_positive ~f:(fun x -> x + lower)
-  | Incl lower_bound, Incl upper_bound ->
-    gen_between_inclusive ~lower_bound ~upper_bound
-  | Incl lower_bound, Excl upper_bound ->
-    let upper_bound = pred upper_bound in
-    gen_between_inclusive ~lower_bound ~upper_bound
-  | Excl lower_bound, Incl upper_bound ->
-    let lower_bound = succ lower_bound in
-    gen_between_inclusive ~lower_bound ~upper_bound
-  | Excl lower_bound, Excl upper_bound ->
-    let lower_bound = succ lower_bound in
-    let upper_bound = pred upper_bound in
-    gen_between_inclusive ~lower_bound ~upper_bound
+  and obs_lower_bits ~lower_bound ~upper_bound =
+    let open Quickcheck.Observer in
+    if lower_bound > upper_bound
+    then failwith "Observer.obs_between_inclusive: lower_bound > upper_bound"
+    else if lower_bound = upper_bound then singleton ()
+    else
+      tuple2 Bool.obs
+        (obs_upper_bits
+           ~lower_bound:(shift_right lower_bound 1)
+           ~upper_bound:(shift_right upper_bound 1))
+      |> unmap ~f:(fun x -> is_even x, shift_right x 1)
+           ~f_sexp:(fun () -> Sexp.Atom "is_even_and_all_but_least_significant_bit")
 
-let rec obs_upper_bits ~lower_bound ~upper_bound =
-  let open Quickcheck.Observer in
-  if lower_bound > upper_bound
-  then failwith "Observer.obs_between_inclusive: lower_bound > upper_bound"
-  else if lower_bound = upper_bound then singleton ()
-  else
-    let midpoint = shift_right (lower_bound + upper_bound) 1 in
-    of_predicate ~f:(fun x -> x <= midpoint)
-      ~f_sexp:(fun () -> <:sexp_of< [`le of t] >> (`le midpoint))
-      (of_fun (fun () -> obs_lower_bits ~lower_bound ~upper_bound:midpoint))
-      (of_fun (fun () -> obs_lower_bits ~lower_bound:(midpoint+one) ~upper_bound))
+  let obs_between_inclusive = obs_lower_bits
 
-and obs_lower_bits ~lower_bound ~upper_bound =
-  let open Quickcheck.Observer in
-  if lower_bound > upper_bound
-  then failwith "Observer.obs_between_inclusive: lower_bound > upper_bound"
-  else if lower_bound = upper_bound then singleton ()
-  else
-    tuple2 bool
-      (obs_upper_bits
-         ~lower_bound:(shift_right lower_bound 1)
-         ~upper_bound:(shift_right upper_bound 1))
-    |> unmap ~f:(fun x -> is_even x, shift_right x 1)
-         ~f_sexp:(fun () -> Sexp.Atom "is_even_and_all_but_least_significant_bit")
+  let obs_positive =
+    let open Quickcheck.Observer in
+    let rec loop bits =
+      let lower_bound = shift_left one (Int.pred bits) in
+      let upper_bound = pred (shift_left one bits) in
+      of_predicate ~f:(fun x -> x <= upper_bound)
+        ~f_sexp:(fun () -> [%sexp_of: [`le of t]] (`le upper_bound))
+        (obs_between_inclusive ~lower_bound ~upper_bound)
+        (of_fun (fun () -> loop (Int.succ bits)))
+    in
+    loop 1
 
-let obs_between_inclusive = obs_lower_bits
+  let obs_negative =
+    let open Quickcheck.Observer in
+    unmap obs_positive ~f:neg ~f_sexp:(fun () -> Sexp.Atom "Bigint.neg")
 
-let obs_positive =
-  let open Quickcheck.Observer in
-  let rec loop bits =
-    let lower_bound = shift_left one (Int.pred bits) in
-    let upper_bound = pred (shift_left one bits) in
-    of_predicate ~f:(fun x -> x <= upper_bound)
-      ~f_sexp:(fun () -> <:sexp_of< [`le of t] >> (`le upper_bound))
-      (obs_between_inclusive ~lower_bound ~upper_bound)
-      (of_fun (fun () -> loop (Int.succ bits)))
-  in
-  loop 1
+  let obs =
+    let open Quickcheck.Observer in
+    comparison ~compare
+      ~eq:zero
+      ~lt:obs_negative
+      ~gt:obs_positive
+      ~compare_sexp:(fun () -> Sexp.Atom "Bigint.compare")
+      ~sexp_of_eq:[%sexp_of: t]
 
-let obs_negative =
-  let open Quickcheck.Observer in
-  unmap obs_positive ~f:neg ~f_sexp:(fun () -> Sexp.Atom "Bigint.neg")
+  let obs_between ~lower_bound ~upper_bound =
+    let open Quickcheck.Observer in
+    match
+      bound_to_incl `Lower lower_bound,
+      bound_to_incl `Upper upper_bound
+    with
+    | None, None -> obs
+    | None, Some upper_bound ->
+      unmap obs_negative
+        ~f:(fun x -> x - (succ upper_bound))
+        ~f_sexp:(fun () -> [%sexp_of: [`minus of t]] (`minus (succ upper_bound)))
+    | Some lower_bound, None ->
+      unmap obs_positive
+        ~f:(fun x -> x - (pred lower_bound))
+        ~f_sexp:(fun () -> [%sexp_of: [`minus of t]] (`minus (pred lower_bound)))
+    | Some lower, Some upper ->
+      if lower > upper then
+        failwiths "Bigint.obs_between: bounds are crossed"
+          (`lower_bound lower_bound, `upper_bound upper_bound)
+          [%sexp_of: [`lower_bound of t Maybe_bound.t] *
+                     [`upper_bound of t Maybe_bound.t]];
+      obs_between_inclusive ~lower_bound:lower ~upper_bound:upper
 
-let obs =
-  let open Quickcheck.Observer in
-  comparison ~compare
-    ~eq:zero
-    ~lt:obs_negative
-    ~gt:obs_positive
-    ~compare_sexp:(fun () -> Sexp.Atom "Bigint.compare")
-    ~sexp_of_eq:<:sexp_of< t >>
+  let shrinker =
+    Quickcheck.Shrinker.empty ()
+
+end
+
+let gen         = For_quickcheck.gen
+let gen_between = For_quickcheck.gen_between
+let obs         = For_quickcheck.obs
+let obs_between = For_quickcheck.obs_between
+let shrinker    = For_quickcheck.shrinker
 
 module Random_internal : sig
   val random :  ?state:Random.State.t -> t -> t
@@ -459,11 +498,11 @@ end
 
 let random = Random_internal.random
 
-TEST_UNIT "random" =
+let%test_unit "random" =
   let state = Random.State.make [| 1 ; 2 ; 3 |] in
   let range = shift_left one 100 in
   let seen = Hash_set.create () in
-  for _i = 1 to 100_000 do
+  for _ = 1 to 100_000 do
     let t = random ~state range in
     if t < zero || t >= range then failwith "random result out of bounds";
     Core_kernel.Std.Hash_set.strict_add_exn seen t
@@ -472,7 +511,7 @@ TEST_UNIT "random" =
 
 include Core_kernel.Int_conversions.Make_hex(struct
 
-  type nonrec t = t with bin_io, compare, typerep
+  type nonrec t = t [@@deriving bin_io, compare, typerep]
   ;;
 
   let to_string i = Z.format "%x" i
@@ -504,7 +543,7 @@ end)
 ;;
 
 
-TEST_MODULE "stable bin_io" = struct
+let%test_module "stable bin_io" = (module struct
 
   let array =
     Array.init 10 ~f:(fun i ->
@@ -515,7 +554,7 @@ TEST_MODULE "stable bin_io" = struct
 
   let buf = Bigstring.create size_of_buf
 
-  TEST_UNIT "round-trip" =
+  let%test_unit "round-trip" =
     for pos = 0 to 20 do
       Array.iter array ~f:(fun t ->
         let size_of_t = Stable.V1.bin_size_t t in
@@ -523,22 +562,22 @@ TEST_MODULE "stable bin_io" = struct
         let new_pos = Stable.V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos t in
         let pos_ref = ref pos in
         let t1 = Stable.V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref in
-        <:test_result< Stable.V1.t >> t1 ~expect:t;
-        <:test_result< int >> !pos_ref ~expect:new_pos;
+        [%test_result: Stable.V1.t] t1 ~expect:t;
+        [%test_result: int] !pos_ref ~expect:new_pos;
       )
     done
   ;;
-end
+end)
 
-TEST_MODULE "vs Int" = struct
+let%test_module "vs Int" = (module struct
 
-  TEST_UNIT "constants" =
-    <:test_eq<int>> Int.zero      (to_int_exn zero);
-    <:test_eq<int>> Int.one       (to_int_exn one);
-    <:test_eq<int>> Int.minus_one (to_int_exn minus_one)
+  let%test_unit "constants" =
+    [%test_eq: int] Int.zero      (to_int_exn zero);
+    [%test_eq: int] Int.one       (to_int_exn one);
+    [%test_eq: int] Int.minus_one (to_int_exn minus_one)
   ;;
 
-  TEST_UNIT "unary" =
+  let%test_unit "unary" =
     let nums =
       [ -1001001001 ; -1001001 ; -1001 ; -1 ; 0 ; 1 ; 1234 ; 1234567 ; 123456789 ]
     in
@@ -557,13 +596,13 @@ TEST_MODULE "vs Int" = struct
         let big_x = of_int_exn int_x in
         let big_actual = Option.try_with (fun () -> big_op big_x) in
         let int_actual = Option.map big_actual ~f:to_int_exn in
-        <:test_result<int option>>
+        [%test_result: int option]
           ~message:(sprintf "Bigint does not match [Int.%s %d]" op_str int_x)
           ~expect
           int_actual))
   ;;
 
-  TEST_UNIT "binops" =
+  let%test_unit "binops" =
     let nums =
       [ -10101 ; -101 ; -1 ; 0 ; 1 ; 123 ; 12345 ]
     in
@@ -597,13 +636,13 @@ TEST_MODULE "vs Int" = struct
           let big_y = of_int_exn int_y in
           let big_actual = Option.try_with (fun () -> big_op big_x big_y) in
           let int_actual = Option.map big_actual ~f:to_int_exn in
-          <:test_result<int option>>
+          [%test_result: int option]
             ~message:(sprintf "Bigint does not match [Int.%s %d %d]" op_str int_x int_y)
             ~expect
             int_actual)))
   ;;
 
-  TEST_UNIT "comparisons" =
+  let%test_unit "comparisons" =
     let nums =
       [ -1001001001 ; -1001001 ; -1001 ; -1 ; 0 ; 1 ; 1234 ; 1234567 ; 123456789 ]
     in
@@ -624,13 +663,13 @@ TEST_MODULE "vs Int" = struct
           let big_x = of_int_exn int_x in
           let big_y = of_int_exn int_y in
           let actual = big_op big_x big_y in
-          <:test_result<bool>>
+          [%test_result: bool]
             ~message:(sprintf "Bigint does not match [Int.%s %d %d]" op_str int_x int_y)
             ~expect
             actual)))
   ;;
 
-  TEST_UNIT "shift" =
+  let%test_unit "shift" =
     let nums =
       [ -10101 ; -101 ; -1 ; 0 ; 1 ; 123 ; 12345 ]
     in
@@ -646,14 +685,14 @@ TEST_MODULE "vs Int" = struct
           let big_x = of_int_exn int_x in
           let big_actual = Option.try_with (fun () -> big_op big_x int_y) in
           let int_actual = Option.map big_actual ~f:to_int_exn in
-          <:test_result<int option>>
+          [%test_result: int option]
             ~message:(sprintf "Bigint does not match [Int.%s %d %d]" op_str int_x int_y)
             ~expect
             int_actual
         done))
   ;;
 
-  TEST_UNIT "pow" =
+  let%test_unit "pow" =
     let bases = [ -101 ; -11 ; -1 ; 0 ; 1 ; 12 ; 123 ] in
     List.iter bases ~f:(fun base ->
       for expt = -4 to 4 do
@@ -662,14 +701,14 @@ TEST_MODULE "vs Int" = struct
         let big_expt = of_int_exn expt in
         let big_actual = Option.try_with (fun () -> pow big_base big_expt) in
         let int_actual = Option.map big_actual ~f:to_int_exn in
-        <:test_result<int option>>
+        [%test_result: int option]
           ~message:(sprintf "Bigint does not match [Int.pow %d %d]" base expt)
           ~expect
           int_actual
       done)
   ;;
 
-  TEST_UNIT "huge" =
+  let%test_unit "huge" =
     let huge_val = pow (of_int_exn 1001) (of_int_exn 10) in
     let huge_str = "1010045120210252210120045010001" in
     let huge_hum = "1_010_045_120_210_252_210_120_045_010_001" in
@@ -678,23 +717,23 @@ TEST_MODULE "vs Int" = struct
     let huge_hex_caps = String.uppercase huge_hex_hum in
     let huge_sexp = Sexp.Atom huge_str in
     let huge_hex_sexp = Sexp.Atom huge_hex in
-    <:test_result<int option>>
+    [%test_result: int option]
       (Option.try_with (fun () -> to_int_exn huge_val))
       ~expect:None;
-    <:test_result< string >> (to_string huge_val)          ~expect:huge_str;
-    <:test_result< string >> (to_string_hum huge_val)      ~expect:huge_hum;
-    <:test_result< Sexp.t >> (sexp_of_t huge_val)          ~expect:huge_sexp;
-    <:test_result< t >>      (of_string huge_str)          ~expect:huge_val;
-    <:test_result< t >>      (of_string huge_hum)          ~expect:huge_val;
-    <:test_result< t >>      (t_of_sexp huge_sexp)         ~expect:huge_val;
-    <:test_result< string >> (Hex.to_string huge_val)      ~expect:huge_hex;
-    <:test_result< string >> (Hex.to_string_hum huge_val)  ~expect:huge_hex_hum;
-    <:test_result< Sexp.t >> (Hex.sexp_of_t huge_val)      ~expect:huge_hex_sexp;
-    <:test_result< t >>      (Hex.of_string huge_hex)      ~expect:huge_val;
-    <:test_result< t >>      (Hex.of_string huge_hex_hum)  ~expect:huge_val;
-    <:test_result< t >>      (Hex.of_string huge_hex_caps) ~expect:huge_val;
-    <:test_result< t >>      (Hex.t_of_sexp huge_hex_sexp) ~expect:huge_val;
+    [%test_result: string] (to_string huge_val)          ~expect:huge_str;
+    [%test_result: string] (to_string_hum huge_val)      ~expect:huge_hum;
+    [%test_result: Sexp.t] (sexp_of_t huge_val)          ~expect:huge_sexp;
+    [%test_result: t]      (of_string huge_str)          ~expect:huge_val;
+    [%test_result: t]      (of_string huge_hum)          ~expect:huge_val;
+    [%test_result: t]      (t_of_sexp huge_sexp)         ~expect:huge_val;
+    [%test_result: string] (Hex.to_string huge_val)      ~expect:huge_hex;
+    [%test_result: string] (Hex.to_string_hum huge_val)  ~expect:huge_hex_hum;
+    [%test_result: Sexp.t] (Hex.sexp_of_t huge_val)      ~expect:huge_hex_sexp;
+    [%test_result: t]      (Hex.of_string huge_hex)      ~expect:huge_val;
+    [%test_result: t]      (Hex.of_string huge_hex_hum)  ~expect:huge_val;
+    [%test_result: t]      (Hex.of_string huge_hex_caps) ~expect:huge_val;
+    [%test_result: t]      (Hex.t_of_sexp huge_hex_sexp) ~expect:huge_val
   ;;
 
-end
+end)
 ;;
