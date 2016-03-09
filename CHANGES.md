@@ -1,3 +1,9 @@
+## 113.33.00
+
+- This release improves the slow path of bignum of string. The previous
+  version used a split on `'_'` followed by a concat, which allocated a
+  bunch of intermediate strings.
+
 ## 113.24.00
 
 - Switched to PPX.

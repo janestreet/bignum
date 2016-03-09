@@ -228,12 +228,31 @@ module Stable = struct
           make s ~length  ~state ~dot ~exp ~slash
       ;;
 
+      let strip_underscores_if_any s =
+        let underscores = ref 0 in
+        let length = String.length s in
+        for i = 0 to Int.pred length do
+          match s.[i] with
+          | '_' -> incr underscores
+          | _ -> ()
+        done;
+        if !underscores > 0
+        then
+          begin
+            let s' = String.create Int.(length - !underscores) in
+            let j = ref 0 in
+            for i = 0 to Int.pred length do
+              match s.[i] with
+              | '_' -> ()
+              | c -> s'.[!j] <- c; incr j
+            done;
+            s'
+          end
+        else s
+      ;;
+
       let of_string s : t =
-        let s =
-          if String.contains s '_'
-          then String.concat ~sep:"" (String.split ~on:'_' s)
-          else s
-        in
+        let s = strip_underscores_if_any s in
         let length = String.length s in
         if length = 0 then fail s;
         decompose s ~length 0 ~state:0 ~dot:(-1) ~exp:(-1) ~slash:(-1)
