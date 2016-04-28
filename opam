@@ -26,6 +26,6 @@ depends: [
   "sexplib"
   "typerep"
   "variantslib"
-  "zarith"
+  "zarith"          {>= "1.4"}
 ]
 available: [ ocaml-version = "4.02.3" ]
