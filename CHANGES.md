@@ -202,4 +202,3 @@
     |------------------------------------------------------|----------|-----------|------------|
     | bignum0.ml:Stable:Bignum binprot roundtrip compact   |   7.87us |   490.00w |     32.88% |
     | bignum0.ml:Stable:Bignum binprot roundtrip classic   |  23.94us | 1_079.00w |    100.00% |
-
