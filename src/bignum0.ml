@@ -1154,8 +1154,6 @@ module For_quickcheck = struct
       ~gt:(of_fun (fun () -> obs_stern_brocot
                                ~lower_numer:numer ~lower_denom:denom
                                ~upper_numer ~upper_denom))
-      ~compare_sexp:(fun () -> Sexp.Atom "Bignum.compare")
-      ~sexp_of_eq:sexp_of_t
   ;;
 
   let obs_between_exclusive x y =
@@ -1167,9 +1165,6 @@ module For_quickcheck = struct
          ~upper_numer:Bigint.one
          ~upper_denom:Bigint.one)
       ~f:(fun z -> ((z - x) / (y - x)))
-      ~f_sexp:(fun () ->
-        [%sexp_of: [`map_unit_range_to_between of t * t]]
-          (`map_unit_range_to_between (x, y)))
   ;;
 
   let obs_greater_than x =
@@ -1181,7 +1176,6 @@ module For_quickcheck = struct
          ~upper_numer:Bigint.one
          ~upper_denom:Bigint.zero)
       ~f:(fun z -> (z / x))
-      ~f_sexp:(fun () -> [%sexp_of: [`divided_by of t]] (`divided_by x))
   ;;
 
   let rec obs_greater_than_candidates prev bignums =
@@ -1193,8 +1187,6 @@ module For_quickcheck = struct
         ~eq:next
         ~lt:(obs_between_exclusive prev next)
         ~gt:(obs_greater_than_candidates next rest)
-        ~compare_sexp:(fun () -> Sexp.Atom "Bignum.compare")
-        ~sexp_of_eq:sexp_of_t
   ;;
 
   (* [obs_positive_greater_than_one] produces observers that distinguish larger numbers
@@ -1210,7 +1202,6 @@ module For_quickcheck = struct
     let open Quickcheck.Observer in
     unmap obs_positive_greater_than_one
       ~f:inverse
-      ~f_sexp:(fun () -> Sexp.Atom "Bignum.inverse")
   ;;
 
   let obs_positive =
@@ -1219,13 +1210,11 @@ module For_quickcheck = struct
       ~eq:one
       ~lt:obs_positive_less_than_one
       ~gt:obs_positive_greater_than_one
-      ~compare_sexp:(fun () -> Sexp.Atom "Bignum.compare")
-      ~sexp_of_eq:sexp_of_t
   ;;
 
   let obs_negative =
     let open Quickcheck.Observer in
-    unmap obs_positive ~f:neg ~f_sexp:(fun () -> Sexp.Atom "Bignum.neg")
+    unmap obs_positive ~f:neg
   ;;
 
   let obs_finite =
@@ -1234,8 +1223,6 @@ module For_quickcheck = struct
       ~eq:zero
       ~lt:obs_negative
       ~gt:obs_positive
-      ~compare_sexp:(fun () -> Sexp.Atom "Bignum.compare")
-      ~sexp_of_eq:sexp_of_t
   ;;
 
   let is_finite bignum =
@@ -1244,10 +1231,9 @@ module For_quickcheck = struct
 
   let obs =
     let open Quickcheck.Observer in
-    of_predicate ~f:is_finite ~f_sexp:(fun () -> Sexp.Atom "bignum_is_finite")
+    of_predicate ~f:is_finite
       obs_finite
-      (of_list [ zero / zero ; one / zero ; neg one / zero ] ~equal
-         ~sexp_of_elt:sexp_of_t)
+      (of_list [ zero / zero ; one / zero ; neg one / zero ] ~equal)
   ;;
 
   let shrinker =

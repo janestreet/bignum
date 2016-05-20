@@ -206,6 +206,9 @@ module T = struct
   let pow x y = Z.pow x (to_int_exn y)
   ;;
 
+  let popcount x = Z.popcount x
+  ;;
+
   let num_bits            = `Bigint_is_unbounded
   let max_value           = `Bigint_is_unbounded
   let min_value           = `Bigint_is_unbounded
@@ -256,7 +259,9 @@ module For_quickcheck = struct
   let rec gen_between_inclusive ~lower_bound ~upper_bound =
     let open Quickcheck.Generator in
     if lower_bound > upper_bound
-    then failure
+    then raise_s [%message "gen_between_inclusive: expected lower_bound <= upper_bound"
+                             (lower_bound : t)
+                             (upper_bound : t)]
     else if equal lower_bound upper_bound
     then singleton lower_bound
     else if equal (succ lower_bound) upper_bound
@@ -347,7 +352,6 @@ module For_quickcheck = struct
     else
       let midpoint = shift_right (lower_bound + upper_bound) 1 in
       of_predicate ~f:(fun x -> x <= midpoint)
-        ~f_sexp:(fun () -> [%sexp_of: [`le of t]] (`le midpoint))
         (of_fun (fun () -> obs_lower_bits ~lower_bound ~upper_bound:midpoint))
         (of_fun (fun () -> obs_lower_bits ~lower_bound:(midpoint+one) ~upper_bound))
 
@@ -362,7 +366,6 @@ module For_quickcheck = struct
            ~lower_bound:(shift_right lower_bound 1)
            ~upper_bound:(shift_right upper_bound 1))
       |> unmap ~f:(fun x -> is_even x, shift_right x 1)
-           ~f_sexp:(fun () -> Sexp.Atom "is_even_and_all_but_least_significant_bit")
 
   let obs_between_inclusive = obs_lower_bits
 
@@ -372,7 +375,6 @@ module For_quickcheck = struct
       let lower_bound = shift_left one (Int.pred bits) in
       let upper_bound = pred (shift_left one bits) in
       of_predicate ~f:(fun x -> x <= upper_bound)
-        ~f_sexp:(fun () -> [%sexp_of: [`le of t]] (`le upper_bound))
         (obs_between_inclusive ~lower_bound ~upper_bound)
         (of_fun (fun () -> loop (Int.succ bits)))
     in
@@ -380,7 +382,7 @@ module For_quickcheck = struct
 
   let obs_negative =
     let open Quickcheck.Observer in
-    unmap obs_positive ~f:neg ~f_sexp:(fun () -> Sexp.Atom "Bigint.neg")
+    unmap obs_positive ~f:neg
 
   let obs =
     let open Quickcheck.Observer in
@@ -388,8 +390,6 @@ module For_quickcheck = struct
       ~eq:zero
       ~lt:obs_negative
       ~gt:obs_positive
-      ~compare_sexp:(fun () -> Sexp.Atom "Bigint.compare")
-      ~sexp_of_eq:[%sexp_of: t]
 
   let obs_between ~lower_bound ~upper_bound =
     let open Quickcheck.Observer in
@@ -401,11 +401,9 @@ module For_quickcheck = struct
     | None, Some upper_bound ->
       unmap obs_negative
         ~f:(fun x -> x - (succ upper_bound))
-        ~f_sexp:(fun () -> [%sexp_of: [`minus of t]] (`minus (succ upper_bound)))
     | Some lower_bound, None ->
       unmap obs_positive
         ~f:(fun x -> x - (pred lower_bound))
-        ~f_sexp:(fun () -> [%sexp_of: [`minus of t]] (`minus (pred lower_bound)))
     | Some lower, Some upper ->
       if lower > upper then
         failwiths "Bigint.obs_between: bounds are crossed"
