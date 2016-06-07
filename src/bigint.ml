@@ -169,6 +169,7 @@ module T = struct
   let of_int32 = Z.of_int32
   let of_int64 = Z.of_int64
   let of_nativeint = Z.of_nativeint
+  let of_float_unchecked = Z.of_float
   let of_float = Z.of_float
   ;;
 
