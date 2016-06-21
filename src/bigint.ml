@@ -126,6 +126,7 @@ module T = struct
         ()
   ;;
 
+  let hash_fold_t = fun state t -> Int.hash_fold_t state (Z.hash t)
   let hash = Z.hash
   let compare = Z.compare
   ;;
@@ -510,7 +511,7 @@ let%test_unit "random" =
 
 include Core_kernel.Int_conversions.Make_hex(struct
 
-  type nonrec t = t [@@deriving bin_io, compare, typerep]
+  type nonrec t = t [@@deriving bin_io, hash, compare, typerep]
   ;;
 
   let to_string i = Z.format "%x" i
