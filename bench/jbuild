@@ -1,0 +1,3 @@
+(library
+ ((name bignum_benchmarks)
+  (libraries (core bignum))))
