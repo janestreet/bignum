@@ -220,8 +220,8 @@ module T = struct
 end
 ;;
 
-module T_math = Core_kernel.Int_math.Make( T )
-module T_conversions = Core_kernel.Int_conversions.Make( T )
+module T_math = Base0.Int_math.Make( T )
+module T_conversions = Base0.Int_conversions.Make( T )
 module T_comparable_with_zero = Comparable.Validate_with_zero( T )
 module T_identifiable = Identifiable.Make( T )
 ;;
@@ -509,37 +509,44 @@ let%test_unit "random" =
   done
 ;;
 
-include Core_kernel.Int_conversions.Make_hex(struct
+module Hex = struct
+  type nonrec t = t [@@deriving bin_io, typerep]
 
-  type nonrec t = t [@@deriving bin_io, hash, compare, typerep]
-  ;;
+  module M = Base0.Int_conversions.Make_hex(struct
 
-  let to_string i = Z.format "%x" i
-  ;;
+      type nonrec t = t [@@deriving hash, compare]
+      ;;
 
-  let char_is_hex_digit = function
-    | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true
-    | _ -> false
-  ;;
+      let to_string i = Z.format "%x" i
+      ;;
 
-  let of_hex_string_no_underscores str =
-    Z.of_string_base 16 str
-  ;;
+      let char_is_hex_digit = function
+        | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true
+        | _ -> false
+      ;;
 
-  let of_string str =
-    of_string_base str
-      ~name:"Hex.of_string"
-      ~char_is_digit:char_is_hex_digit
-      ~of_string_no_underscores:of_hex_string_no_underscores
-  ;;
+      let of_hex_string_no_underscores str =
+        Z.of_string_base 16 str
+      ;;
 
-  let (<) = (<)
-  let neg = neg
-  let zero = zero
+      let of_string str =
+        of_string_base str
+          ~name:"Hex.of_string"
+          ~char_is_digit:char_is_hex_digit
+          ~of_string_no_underscores:of_hex_string_no_underscores
+      ;;
 
-  let module_name = module_name ^ ".Hex"
+      let (<) = (<)
+      let neg = neg
+      let zero = zero
 
-end)
+      let module_name = module_name ^ ".Hex"
+
+    end)
+
+  include (M.Hex : module type of struct include M.Hex end
+           with type t := t)
+end
 ;;
 
 
