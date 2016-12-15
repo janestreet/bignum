@@ -220,8 +220,8 @@ module T = struct
 end
 ;;
 
-module T_math = Base0.Int_math.Make( T )
-module T_conversions = Base0.Int_conversions.Make( T )
+module T_math = Base.Not_exposed_properly.Int_math.Make( T )
+module T_conversions = Base.Not_exposed_properly.Int_conversions.Make( T )
 module T_comparable_with_zero = Comparable.Validate_with_zero( T )
 module T_identifiable = Identifiable.Make( T )
 ;;
@@ -512,7 +512,7 @@ let%test_unit "random" =
 module Hex = struct
   type nonrec t = t [@@deriving bin_io, typerep]
 
-  module M = Base0.Int_conversions.Make_hex(struct
+  module M = Base.Not_exposed_properly.Int_conversions.Make_hex(struct
 
       type nonrec t = t [@@deriving hash, compare]
       ;;

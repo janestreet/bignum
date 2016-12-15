@@ -2,6 +2,7 @@
 open! Core_kernel.Std
 
 type t
+[@@deriving hash]
 
 (** Sexp conversions represent values as decimals of up to nine decimal places if
     possible, or else as [(x + y/z)] where [x] is decimal and [y] and [z] are integers. So
@@ -14,6 +15,7 @@ include Floatable      with type t := t
 include Hashable       with type t := t
 include Binable        with type t := t
 include Quickcheckable with type t := t
+
 
 val zero     : t
 val one      : t
@@ -118,10 +120,10 @@ val gen_between
 
 module Stable : sig
   module V1 : sig
-    type nonrec t = t [@@deriving sexp, bin_io, compare]
+    type nonrec t = t [@@deriving sexp, bin_io, compare, hash]
   end
   module V2 : sig
-    type nonrec t = t [@@deriving sexp, bin_io, compare]
+    type nonrec t = t [@@deriving sexp, bin_io, compare, hash]
   end
 end
 

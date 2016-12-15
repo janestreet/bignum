@@ -3,6 +3,6 @@
    (public_name bignum)
    (libraries
      (core_kernel
-      typerep_lib
-      nums
-      zarith_1_4))))
+      typerep
+      num
+      zarith))))

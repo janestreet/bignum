@@ -8,6 +8,9 @@ module Stable = struct
 
     include Zarith.Q
 
+    let hash (t : t) = Hashtbl.hash t
+    let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
+
     let num t = of_bigint t.num
     let den t = of_bigint t.den
 
