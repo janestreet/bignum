@@ -14,8 +14,10 @@ include Comparable     with type t := t
 include Floatable      with type t := t
 include Hashable       with type t := t
 include Binable        with type t := t
+(** [gen] produces values with an order of magnitude (roughly the number of digits) in the
+    numerator and denominator proportional to [Quickcheck.Generator.size].  Also includes
+    values with zero in the denominator. *)
 include Quickcheckable with type t := t
-
 
 val zero     : t
 val one      : t
@@ -108,15 +110,19 @@ val den_as_bigint : t -> Bigint.t
 
 val pp : Format.formatter -> t -> unit
 
-(** [gen_between ~with_undefined ~lower_bound ~upper_bound] generates a Quickcheck
-    generator like [gen], but restricted to values satisfying [lower_bound] and
-    [upper_bound], plus the undefined value if [with_undefined] is true.  If no values
-    satisfy [lower_bound] and [upper_bound], raises an exception. *)
-val gen_between
-  :  with_undefined : bool
-  -> lower_bound    : t Maybe_bound.t
-  -> upper_bound    : t Maybe_bound.t
-  -> t Quickcheck.Generator.t
+(** [gen_finite] is like [gen] but excludes values with zero in the denominator. *)
+val gen_finite : t Quickcheck.Generator.t
+
+(** [gen_uniform_excl lower_bound upper_bound] produces a uniform distribution between
+    [lower_bound] and [upper_bound], exclusive, in units based on the fractional parts of
+    the bounds plus a number of decimal places proportional to
+    [Quickcheck.Generator.size]. *)
+val gen_uniform_excl : t -> t -> t Quickcheck.Generator.t
+
+(** [gen_incl lower_bound upper_bound] produces a distribution of values between
+    [lower_bound] and [upper_bound], inclusive, that is approximately uniform with extra
+    weight given to producing the endpoints [lower_bound] and [upper_bound]. *)
+val gen_incl : t -> t -> t Quickcheck.Generator.t
 
 module Stable : sig
   module V1 : sig

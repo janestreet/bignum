@@ -100,6 +100,11 @@ module Stable = struct
 
       let fail s = failwithf "unable to parse %S as Bignum.t" s ()
 
+      let rec all_zeroes s ~pos ~len =
+        if len <= 0
+        then true
+        else Char.equal s.[pos] '0' &&  all_zeroes s ~pos:Int.(pos+1) ~len:Int.(len-1)
+
       (* parse the substring of s between starting and finishing (both
          included), knowing the position of the dot.
 
@@ -119,7 +124,7 @@ module Stable = struct
           else
             Z.of_substring s ~pos:starting ~len:decimal_len
         in
-        if frac_len = 0 then
+        if frac_len = 0 || all_zeroes s ~pos:(dot + 1) ~len:frac_len then
           of_bigint decimal
         else
           let frac = Z.of_substring s ~pos:(dot + 1) ~len:frac_len in
@@ -298,6 +303,12 @@ module Stable = struct
     let%test _ = equal (of_string "-_1_0_/0_1") (of_int (-10))
     let%test _ = equal (of_string "+_1_0_/0_1") (of_int 10)
     ;;
+
+    let%test _ = equal (of_string ".00000000") zero
+    let%test _ = equal (of_string "-.00000000") zero
+    let%test _ = equal (of_string "-0.") zero
+    let%test _ = equal (of_string "+0.") zero
+
 
     let sexp_of_t t =
       try
@@ -953,12 +964,7 @@ let%test_module "round" = (module struct
   end)
 end)
 
-include (Hashable.Make_binable (struct
-           include T
-
-           let compare = compare
-           let hash    = Hashtbl.hash
-         end) : Hashable.S_binable with type t := t)
+include (Hashable.Make_binable (T) : Hashable.S_binable with type t := t)
 
 module O = struct
   let ( + ) = ( + )
@@ -994,249 +1000,112 @@ module O = struct
 end
 
 module For_quickcheck = struct
+  module Generator = Quickcheck.Generator
 
-  let rec gen_stern_brocot ~lower_numer ~lower_denom ~upper_numer ~upper_denom =
-    let open Quickcheck.Generator in
-    let numer = Bigint.(lower_numer + upper_numer) in
-    let denom = Bigint.(lower_denom + upper_denom) in
-    union
-      [ of_fun (fun () ->
-          gen_stern_brocot
-            ~lower_numer
-            ~lower_denom
-            ~upper_numer:numer
-            ~upper_denom:denom)
-      ; singleton (of_bigint numer / of_bigint denom)
-      ; of_fun (fun () ->
-          gen_stern_brocot
-            ~lower_numer:numer
-            ~lower_denom:denom
-            ~upper_numer
-            ~upper_denom)
+  open Generator.Let_syntax
+
+  let split_weighted_in_favor_of_right_side size =
+    let%map first_half = Int.gen_log_uniform_incl 0 size in
+    let     other_half = Int.( - ) size first_half in
+    first_half, other_half
+  ;;
+
+  let bigint_power_of_ten expt =
+    Bigint.pow (Bigint.of_int 10) (Bigint.of_int expt)
+  ;;
+
+  let exponential ~size =
+    let%map exponent = Int.gen_uniform_incl 0 (Int.( * ) size 3) in
+    of_bigint (bigint_power_of_ten exponent)
+  ;;
+
+  let bigint_gcd x y =
+    Bigint.of_zarith_bigint (Z.gcd (Bigint.to_zarith_bigint x) (Bigint.to_zarith_bigint y))
+  ;;
+
+  let bigint_lcm x y =
+    Bigint.of_zarith_bigint (Z.lcm (Bigint.to_zarith_bigint x) (Bigint.to_zarith_bigint y))
+  ;;
+
+  let positive_abs_num_as_bigint x =
+    num_as_bigint x
+    |> Bigint.abs
+    |> Bigint.max Bigint.one
+  ;;
+
+  let fractional_part t =
+    t - round t ~dir:`Zero
+  ;;
+
+  let gen_uniform_excl lower_bound upper_bound =
+    if lower_bound >= upper_bound then begin
+      raise_s [%message
+        "Bignum.gen_uniform_excl: bounds are crossed"
+          (lower_bound : t)
+          (upper_bound : t)]
+    end;
+    (* figure out the fractional units implied by the bounds *)
+    let gcd =
+      let lo = fractional_part lower_bound in
+      let hi = fractional_part upper_bound in
+      let num =
+        bigint_gcd
+          (positive_abs_num_as_bigint lo)
+          (positive_abs_num_as_bigint hi)
+      in
+      let den =
+        bigint_lcm
+          (den_as_bigint lo)
+          (den_as_bigint hi)
+      in
+      of_bigint num / of_bigint den
+    in
+    let%bind size = Generator.size in
+    (* Pick a precision beyond just [gcd], based on [size].  We want to add some digits of
+       precision, and also a potentially non-decimal factor. *)
+    let%bind decimal_size, fractional_size = split_weighted_in_favor_of_right_side size in
+    let%bind decimal_divisor = exponential ~size:decimal_size in
+    let fractional_divisor = of_int (Int.succ fractional_size) in
+    let divisor = fractional_divisor * decimal_divisor in
+    (* choose values in units of the chosen precision. *)
+    let increment = gcd / divisor in
+    let count =
+      num_as_bigint ((upper_bound - lower_bound) / increment)
+      |> Bigint.max (Bigint.of_int 10)
+    in
+    let%map index = Bigint.gen_uniform_incl Bigint.one (Bigint.pred count) in
+    lower_bound + (of_bigint index * increment)
+  ;;
+
+  let gen_incl lower_bound upper_bound =
+    Generator.weighted_union
+      [ 0.05, return lower_bound
+      ; 0.05, return upper_bound
+      ; 0.9,  gen_uniform_excl lower_bound upper_bound
       ]
-  ;;
-
-  let gen_greater_than x =
-    let open Quickcheck.Generator in
-    gen_stern_brocot
-      ~lower_numer:Bigint.one
-      ~lower_denom:Bigint.one
-      ~upper_numer:Bigint.one
-      ~upper_denom:Bigint.zero
-    >>| fun y ->
-    (x * y)
-  ;;
-
-  let gen_less_than x =
-    let open Quickcheck.Generator in
-    gen_greater_than (neg x) >>| neg
-  ;;
-
-  let gen_between_exclusive x y =
-    let open Quickcheck.Generator in
-    gen_stern_brocot
-      ~lower_numer:Bigint.zero
-      ~lower_denom:Bigint.one
-      ~upper_numer:Bigint.one
-      ~upper_denom:Bigint.one
-    >>| fun z ->
-    (x + (z * (y - x)))
-  ;;
-
-  let gen_with_negative_and_inverse positive =
-    let open Quickcheck.Generator in
-    let negative = neg positive in
-    of_list [ positive ; negative ; one / positive ; one / negative ]
-  ;;
-
-  let rec gen_greater_than_candidates prev bignums =
-    let open Quickcheck.Generator in
-    match bignums with
-    | [] -> gen_greater_than prev
-    | next :: rest ->
-      union
-        [ gen_between_exclusive prev next
-        ; singleton next
-        ; of_fun (fun () -> gen_greater_than_candidates next rest)
-        ]
   ;;
 
   let gen_finite =
-    let open Quickcheck.Generator in
-    union
-      [ of_list [ zero ; one ; neg one ]
-      ; gen_greater_than_candidates one
-          [ ten ; hundred ; thousand ; million ; billion ; trillion ]
-        >>= gen_with_negative_and_inverse
-      ]
+    let%bind size = Generator.size in
+    let%bind order_of_magnitude, precision = split_weighted_in_favor_of_right_side size in
+    let%bind magnitude = exponential ~size:order_of_magnitude in
+    let%bind hi = if%map Bool.gen then magnitude else one / magnitude in
+    let      lo = neg hi in
+    Generator.with_size ~size:precision (gen_uniform_excl lo hi)
   ;;
 
   let gen =
-    let open Quickcheck.Generator in
-    union
-      [ of_list [ one / zero ; neg one / zero ; zero / zero ]
-      ; gen_finite
+    Generator.weighted_union
+      [ 0.05, return infinity
+      ; 0.05, return neg_infinity
+      ; 0.05, return nan
+      ; 0.85, gen_finite
       ]
   ;;
 
-  let bounds_are_crossed ~lower_bound ~upper_bound =
-    match lower_bound, upper_bound with
-    | Excl lower, _ when lower = infinity     -> true
-    | _, Excl upper when upper = neg_infinity -> true
-    | Unbounded, _ -> false
-    | _, Unbounded -> false
-    |  Incl lower,                Incl upper               -> lower >  upper
-    | (Incl lower | Excl lower), (Incl upper | Excl upper) -> lower >= upper
-  ;;
-
-  let%test_module "bounds_are_crossed" =
-    (module struct
-      let seven = of_int 7
-      let%test _ = not (bounds_are_crossed ~lower_bound:(Incl seven) ~upper_bound:(Incl seven))
-      let%test _ =      bounds_are_crossed ~lower_bound:(Incl seven) ~upper_bound:(Excl seven)
-      let%test _ =      bounds_are_crossed ~lower_bound:(Excl seven) ~upper_bound:(Incl seven)
-      let%test _ =      bounds_are_crossed ~lower_bound:(Excl seven) ~upper_bound:(Excl seven)
-    end)
-  ;;
-
-  let check_bounds_exn fct_name ~lower_bound ~upper_bound =
-    if bounds_are_crossed ~lower_bound ~upper_bound
-    then
-      raise_s
-        [%sexp
-          (sprintf "Bignum.%s: bounds are crossed" fct_name : string),
-          { lower_bound = (lower_bound : t Maybe_bound.t)
-          ; upper_bound = (upper_bound : t Maybe_bound.t)
-          }
-        ]
-  ;;
-
-  let gen_between ~with_undefined ~lower_bound ~upper_bound =
-    let open Quickcheck.Generator in
-    check_bounds_exn "gen_between" ~lower_bound ~upper_bound;
-    let undef =
-      if with_undefined
-      then [ 1., singleton (zero / zero) ]
-      else []
-    in
-    let lower_inclusive =
-      match lower_bound with
-      | Unbounded  -> [ 1., singleton (neg one / zero) ]
-      | Incl lower -> [ 1., singleton lower ]
-      | Excl _     -> []
-    in
-    let upper_inclusive =
-      match upper_bound with
-      | Unbounded  -> [ 1., singleton (one / zero) ]
-      | Incl upper -> [ 1., singleton upper ]
-      | Excl _     -> []
-    in
-    let between_exclusive =
-      match lower_bound, upper_bound with
-      | Unbounded, Unbounded -> gen_finite
-      | Unbounded, (Incl upper | Excl upper) ->
-        gen_less_than upper
-      | (Incl lower | Excl lower), Unbounded ->
-        gen_greater_than lower
-      | (Incl lower | Excl lower), (Incl upper | Excl upper) ->
-        gen_between_exclusive lower upper
-    in
-    weighted_union ([ 10., between_exclusive ] @ lower_inclusive @ upper_inclusive @ undef)
-  ;;
-
-  let rec obs_stern_brocot ~lower_numer ~lower_denom ~upper_numer ~upper_denom =
-    let open Quickcheck.Observer in
-    let numer = Bigint.(lower_numer + upper_numer) in
-    let denom = Bigint.(lower_denom + upper_denom) in
-    let bignum = (of_bigint numer / of_bigint denom) in
-    comparison ~compare:compare
-      ~eq:bignum
-      ~lt:(of_fun (fun () -> obs_stern_brocot
-                               ~lower_numer ~lower_denom
-                               ~upper_numer:numer ~upper_denom:denom))
-      ~gt:(of_fun (fun () -> obs_stern_brocot
-                               ~lower_numer:numer ~lower_denom:denom
-                               ~upper_numer ~upper_denom))
-  ;;
-
-  let obs_between_exclusive x y =
-    let open Quickcheck.Observer in
-    unmap
-      (obs_stern_brocot
-         ~lower_numer:Bigint.zero
-         ~lower_denom:Bigint.one
-         ~upper_numer:Bigint.one
-         ~upper_denom:Bigint.one)
-      ~f:(fun z -> ((z - x) / (y - x)))
-  ;;
-
-  let obs_greater_than x =
-    let open Quickcheck.Observer in
-    unmap
-      (obs_stern_brocot
-         ~lower_numer:Bigint.one
-         ~lower_denom:Bigint.one
-         ~upper_numer:Bigint.one
-         ~upper_denom:Bigint.zero)
-      ~f:(fun z -> (z / x))
-  ;;
-
-  let rec obs_greater_than_candidates prev bignums =
-    let open Quickcheck.Observer in
-    match bignums with
-    | [] -> obs_greater_than prev
-    | next :: rest ->
-      comparison ~compare
-        ~eq:next
-        ~lt:(obs_between_exclusive prev next)
-        ~gt:(obs_greater_than_candidates next rest)
-  ;;
-
-  (* [obs_positive_greater_than_one] produces observers that distinguish larger numbers
-     in fewer steps than [obs_greater_than one]. The latter only distinguishes 1,000
-     from 1,001 at a recursion depth of 1,000.  With the candidates approach, it does so at
-     a depth of about 3. *)
-  let obs_positive_greater_than_one =
-    obs_greater_than_candidates one
-      [ ten ; hundred ; thousand ; million ; billion ; trillion ]
-  ;;
-
-  let obs_positive_less_than_one =
-    let open Quickcheck.Observer in
-    unmap obs_positive_greater_than_one
-      ~f:inverse
-  ;;
-
-  let obs_positive =
-    let open Quickcheck.Observer in
-    comparison ~compare
-      ~eq:one
-      ~lt:obs_positive_less_than_one
-      ~gt:obs_positive_greater_than_one
-  ;;
-
-  let obs_negative =
-    let open Quickcheck.Observer in
-    unmap obs_positive ~f:neg
-  ;;
-
-  let obs_finite =
-    let open Quickcheck.Observer in
-    comparison ~compare
-      ~eq:zero
-      ~lt:obs_negative
-      ~gt:obs_positive
-  ;;
-
-  let is_finite bignum =
-    not (is_zero (den bignum))
-  ;;
-
   let obs =
-    let open Quickcheck.Observer in
-    of_predicate ~f:is_finite
-      obs_finite
-      (of_list [ zero / zero ; one / zero ; neg one / zero ] ~equal)
+    Quickcheck.Observer.create (fun t ~size:_ hash ->
+      hash_fold_t hash t)
   ;;
 
   let shrinker =
@@ -1244,7 +1113,9 @@ module For_quickcheck = struct
   ;;
 end
 
-let obs         = For_quickcheck.obs
-let gen         = For_quickcheck.gen
-let gen_between = For_quickcheck.gen_between
-let shrinker    = For_quickcheck.shrinker
+let obs              = For_quickcheck.obs
+let gen              = For_quickcheck.gen
+let gen_finite       = For_quickcheck.gen_finite
+let gen_incl         = For_quickcheck.gen_incl
+let gen_uniform_excl = For_quickcheck.gen_uniform_excl
+let shrinker         = For_quickcheck.shrinker

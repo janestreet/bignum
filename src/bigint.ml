@@ -166,6 +166,14 @@ module T = struct
   let bit_and = Z.logand
   ;;
 
+  let ( land ) = bit_and
+  let ( lor  ) = bit_or
+  let ( lxor ) = bit_xor
+  let ( lnot ) = bit_not
+  let ( lsl  ) = shift_left
+  let ( asr  ) = shift_right
+  ;;
+
   let of_int = Z.of_int
   let of_int32 = Z.of_int32
   let of_int64 = Z.of_int64
@@ -211,12 +219,6 @@ module T = struct
   let popcount x = Z.popcount x
   ;;
 
-  let num_bits            = `Bigint_is_unbounded
-  let max_value           = `Bigint_is_unbounded
-  let min_value           = `Bigint_is_unbounded
-  let shift_right_logical = `Bigint_is_unbounded
-  ;;
-
 end
 ;;
 
@@ -239,194 +241,12 @@ end
 include (O : module type of O with type t := t)
 ;;
 
-module For_quickcheck = struct
-
-  let is_even x = equal zero (bit_and x one)
-
-  let midpoint x y =
-    let midpoint = shift_right (x + y) 1 in
-    if Bool.equal (is_even x) (is_even y)
-    then `Single midpoint
-    else `Double (midpoint, succ midpoint)
-
-  let bound_to_incl which_side bound =
-    match (bound : _ Maybe_bound.t) with
-    | Unbounded -> None
-    | Incl n    -> Some n
-    | Excl n    ->
-      match which_side with
-      | `Upper -> Some (pred n)
-      | `Lower -> Some (succ n)
-
-  let rec gen_between_inclusive ~lower_bound ~upper_bound =
-    let open Quickcheck.Generator in
-    if lower_bound > upper_bound
-    then raise_s [%message "gen_between_inclusive: expected lower_bound <= upper_bound"
-                             (lower_bound : t)
-                             (upper_bound : t)]
-    else if equal lower_bound upper_bound
-    then singleton lower_bound
-    else if equal (succ lower_bound) upper_bound
-    then doubleton lower_bound upper_bound
-    else
-      match midpoint lower_bound upper_bound with
-      | `Single midpoint ->
-        union
-          [ singleton lower_bound
-          ; of_fun (fun () ->
-              gen_between_inclusive
-                ~lower_bound:(succ lower_bound)
-                ~upper_bound:(pred midpoint))
-          ; singleton midpoint
-          ; of_fun (fun () ->
-              gen_between_inclusive
-                ~lower_bound:(succ midpoint)
-                ~upper_bound:(pred upper_bound))
-          ; singleton upper_bound
-          ]
-      | `Double (lower_mid, upper_mid) ->
-        union
-          [ singleton lower_bound
-          ; of_fun (fun () ->
-              gen_between_inclusive
-                ~lower_bound:(succ lower_bound)
-                ~upper_bound:(pred lower_mid))
-          ; singleton lower_mid
-          ; singleton upper_mid
-          ; of_fun (fun () ->
-              gen_between_inclusive
-                ~lower_bound:(succ upper_mid)
-                ~upper_bound:(pred upper_bound))
-          ; singleton upper_bound
-          ]
-
-  let gen_positive =
-    let open Quickcheck.Generator in
-    let rec loop exponent =
-      let lower_bound = shift_left one exponent in
-      let upper_bound = pred (shift_left lower_bound 1) in
-      union
-        [ gen_between_inclusive ~lower_bound ~upper_bound
-        ; of_fun (fun () -> loop (Int.succ exponent))
-        ]
-    in
-    loop 0
-
-  let gen_negative =
-    let open Quickcheck.Generator in
-    gen_positive
-    >>| neg
-
-  let gen =
-    let open Quickcheck.Generator in
-    union
-      [ singleton zero
-      ; gen_positive
-      ; gen_negative
-      ]
-
-  let gen_between ~lower_bound ~upper_bound =
-    let open Quickcheck.Generator in
-    match
-      bound_to_incl `Lower lower_bound,
-      bound_to_incl `Upper upper_bound
-    with
-    | None, None -> gen
-    | None, Some upper ->
-      let upper = succ upper in
-      map gen_negative ~f:(fun x -> x + upper)
-    | Some lower, None ->
-      let lower = pred lower in
-      map gen_positive ~f:(fun x -> x + lower)
-    | Some lower, Some upper ->
-      if lower > upper then
-        failwiths "Bigint.gen_between: bounds are crossed"
-          (`lower_bound lower_bound, `upper_bound upper_bound)
-          [%sexp_of: [`lower_bound of t Maybe_bound.t] *
-                     [`upper_bound of t Maybe_bound.t]];
-      gen_between_inclusive ~lower_bound:lower ~upper_bound:upper
-
-  let rec obs_upper_bits ~lower_bound ~upper_bound =
-    let open Quickcheck.Observer in
-    if lower_bound > upper_bound
-    then failwith "Observer.obs_between_inclusive: lower_bound > upper_bound"
-    else if lower_bound = upper_bound then singleton ()
-    else
-      let midpoint = shift_right (lower_bound + upper_bound) 1 in
-      of_predicate ~f:(fun x -> x <= midpoint)
-        (of_fun (fun () -> obs_lower_bits ~lower_bound ~upper_bound:midpoint))
-        (of_fun (fun () -> obs_lower_bits ~lower_bound:(midpoint+one) ~upper_bound))
-
-  and obs_lower_bits ~lower_bound ~upper_bound =
-    let open Quickcheck.Observer in
-    if lower_bound > upper_bound
-    then failwith "Observer.obs_between_inclusive: lower_bound > upper_bound"
-    else if lower_bound = upper_bound then singleton ()
-    else
-      tuple2 Bool.obs
-        (obs_upper_bits
-           ~lower_bound:(shift_right lower_bound 1)
-           ~upper_bound:(shift_right upper_bound 1))
-      |> unmap ~f:(fun x -> is_even x, shift_right x 1)
-
-  let obs_between_inclusive = obs_lower_bits
-
-  let obs_positive =
-    let open Quickcheck.Observer in
-    let rec loop bits =
-      let lower_bound = shift_left one (Int.pred bits) in
-      let upper_bound = pred (shift_left one bits) in
-      of_predicate ~f:(fun x -> x <= upper_bound)
-        (obs_between_inclusive ~lower_bound ~upper_bound)
-        (of_fun (fun () -> loop (Int.succ bits)))
-    in
-    loop 1
-
-  let obs_negative =
-    let open Quickcheck.Observer in
-    unmap obs_positive ~f:neg
-
-  let obs =
-    let open Quickcheck.Observer in
-    comparison ~compare
-      ~eq:zero
-      ~lt:obs_negative
-      ~gt:obs_positive
-
-  let obs_between ~lower_bound ~upper_bound =
-    let open Quickcheck.Observer in
-    match
-      bound_to_incl `Lower lower_bound,
-      bound_to_incl `Upper upper_bound
-    with
-    | None, None -> obs
-    | None, Some upper_bound ->
-      unmap obs_negative
-        ~f:(fun x -> x - (succ upper_bound))
-    | Some lower_bound, None ->
-      unmap obs_positive
-        ~f:(fun x -> x - (pred lower_bound))
-    | Some lower, Some upper ->
-      if lower > upper then
-        failwiths "Bigint.obs_between: bounds are crossed"
-          (`lower_bound lower_bound, `upper_bound upper_bound)
-          [%sexp_of: [`lower_bound of t Maybe_bound.t] *
-                     [`upper_bound of t Maybe_bound.t]];
-      obs_between_inclusive ~lower_bound:lower ~upper_bound:upper
-
-  let shrinker =
-    Quickcheck.Shrinker.empty ()
-
-end
-
-let gen         = For_quickcheck.gen
-let gen_between = For_quickcheck.gen_between
-let obs         = For_quickcheck.obs
-let obs_between = For_quickcheck.obs_between
-let shrinker    = For_quickcheck.shrinker
-
-module Random_internal : sig
-  val random :  ?state:Random.State.t -> t -> t
+module Make_random (State : sig
+    type t
+    val bits : t -> int
+    val int : t -> int -> int
+  end) : sig
+  val random : state:State.t -> t -> t
 end = struct
 
   (* Uniform random generation of Bigint values.
@@ -441,7 +261,7 @@ end = struct
 
      The [depth] value is chosen so that repeating is uncommon (1 in 1,000 or less). *)
 
-  let bits_at_depth ~depth = 30 lsl depth
+  let bits_at_depth ~depth = Int.shift_left 30 depth
 
   let range_at_depth ~depth = shift_left one (bits_at_depth ~depth)
 
@@ -457,7 +277,7 @@ end = struct
 
   let rec random_bigint_at_depth ~state ~depth =
     if Int.equal depth 0
-    then of_int (Random.State.bits state)
+    then of_int (State.bits state)
     else
       let prev_depth = Int.pred depth in
       let prefix = random_bigint_at_depth ~state ~depth:prev_depth in
@@ -485,18 +305,21 @@ end = struct
     large_random_at_depth ~state ~range ~depth
   ;;
 
-  let random ?(state = Random.State.default) range =
+  let random ~state range =
     if range <= zero
     then failwithf "Bigint.random: argument %s <= 0" (to_string_hum range) ()
     (* Note that it's not safe to do [1 lsl 30] on a 32-bit machine (with 31-bit signed
        integers) *)
     else if range < shift_left one 30
-    then of_int (Random.State.int state (to_int_exn range))
+    then of_int (State.int state (to_int_exn range))
     else large_random ~state ~range
   ;;
 end
 
-let random = Random_internal.random
+module Random_internal = Make_random (Random.State)
+
+let random ?(state = Random.State.default) range =
+  Random_internal.random ~state range
 
 let%test_unit "random" =
   let state = Random.State.make [| 1 ; 2 ; 3 |] in
@@ -508,6 +331,98 @@ let%test_unit "random" =
     Core_kernel.Std.Hash_set.strict_add_exn seen t
   done
 ;;
+
+module For_quickcheck : sig
+  include Quickcheckable.S_bounded with type t := t
+  val gen_negative : t Quickcheck.Generator.t
+  val gen_positive : t Quickcheck.Generator.t
+end = struct
+
+  module Generator = Quickcheck.Generator
+
+  open Generator.Let_syntax
+
+  module Uniform = Make_random (struct
+      type t = Splittable_random.State.t
+      let int t range = Splittable_random.int t ~lo:0 ~hi:(Int.pred range)
+      let bits t = int t (Int.shift_left 1 30)
+    end)
+
+  let random_uniform ~state lo hi =
+    lo + Uniform.random ~state (succ (hi - lo))
+
+  let gen_uniform_incl lower_bound upper_bound =
+    if lower_bound > upper_bound then begin
+      raise_s [%message
+        "Bigint.gen_uniform_incl: bounds are crossed"
+          (lower_bound : t)
+          (upper_bound : t)]
+    end;
+    Generator.create (fun ~size:_ state ->
+      random_uniform ~state lower_bound upper_bound)
+
+  let gen_incl lower_bound upper_bound =
+    Generator.weighted_union
+      [ 0.05, Generator.return lower_bound
+      ; 0.05, Generator.return upper_bound
+      ; 0.9,  gen_uniform_incl lower_bound upper_bound
+      ]
+
+  let min_represented_by_n_bits n =
+    if Int.equal n 0
+    then zero
+    else shift_left one (Int.pred n)
+
+  let max_represented_by_n_bits n =
+    pred (shift_left one n)
+
+  let gen_log_uniform_incl lower_bound upper_bound =
+    if lower_bound < zero || lower_bound > upper_bound then begin
+      raise_s [%message
+        "Bigint.gen_log_incl: invalid bounds"
+          (lower_bound : t)
+          (upper_bound : t)]
+    end;
+    let min_bits = Z.numbits lower_bound in
+    let max_bits = Z.numbits upper_bound in
+    let%bind bits = Int.gen_uniform_incl min_bits max_bits in
+    gen_uniform_incl
+      (max lower_bound (min_represented_by_n_bits bits))
+      (min upper_bound (max_represented_by_n_bits bits))
+
+  let gen_log_incl lower_bound upper_bound =
+    Generator.weighted_union
+      [ 0.05, Generator.return lower_bound
+      ; 0.05, Generator.return upper_bound
+      ; 0.9,  gen_log_uniform_incl lower_bound upper_bound
+      ]
+
+  let gen_positive =
+    let%bind extra_bytes = Generator.size in
+    let num_bytes = Int.succ extra_bytes in
+    let num_bits = Int.( * ) num_bytes 8 in
+    gen_log_uniform_incl one (pred (shift_left one num_bits))
+
+  let gen_negative =
+    Generator.map gen_positive ~f:neg
+
+  let gen =
+    Generator.weighted_union
+      [ 0.45, gen_positive
+      ; 0.1,  Generator.return zero
+      ; 0.45, gen_negative
+      ]
+
+  let obs =
+    Quickcheck.Observer.create (fun t ~size:_ hash ->
+      hash_fold_t hash t)
+
+  let shrinker =
+    Quickcheck.Shrinker.empty ()
+
+end
+
+include For_quickcheck
 
 module Hex = struct
   type nonrec t = t [@@deriving bin_io, typerep]
