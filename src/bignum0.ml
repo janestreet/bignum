@@ -380,7 +380,7 @@ module Stable = struct
       end)
   end
   module V2 = struct
-    open! Core_kernel.Stable
+    open! Core_kernel.Core_kernel_stable
     open! Core_kernel.Std.Int.Replace_polymorphic_compare
 
     include V1
