@@ -3,7 +3,7 @@ module Stable = struct
     module Zarith = Zarith_1_4
     module Z = Zarith.Z
 
-    open Core_kernel.Std
+    open Core_kernel
     open Int.Replace_polymorphic_compare
 
     include Zarith.Q
@@ -381,7 +381,7 @@ module Stable = struct
   end
   module V2 = struct
     open! Core_kernel.Core_kernel_stable
-    open! Core_kernel.Std.Int.Replace_polymorphic_compare
+    open! Core_kernel.Int.Replace_polymorphic_compare
 
     include V1
     (* The V2 serialized representation makes use of special case to
@@ -429,7 +429,7 @@ module Stable = struct
     end
 
     include Binable.Of_binable.V1 (Bin_rep) (struct
-        open! Core_kernel.Std
+        open! Core_kernel
         open! Int.Replace_polymorphic_compare
 
         type t = V1.t
@@ -470,7 +470,7 @@ module Stable = struct
               (* Both num and den fits in an int each *)
               let n = Z.to_int num in (* Z.fits_int num *)
               let d = Z.to_int den in (* Z.fits_int den *)
-              let ( = ) = Core_kernel.Std.Int.( = ) in
+              let ( = ) = Core_kernel.Int.( = ) in
               let ( mod ) = Pervasives.( mod ) in
               if d = 0 then Bin_rep.Other t
               else if d = 1 then Bin_rep.Int n
@@ -517,7 +517,7 @@ module Stable = struct
       end)
 
     let bin_read_t buf ~pos_ref =
-      let module Int = Core_kernel.Std.Int in
+      let module Int = Core_kernel.Int in
       match Tag.bin_read_t buf ~pos_ref with
       | Tag.Zero     -> zero
       | Tag.Int      -> of_int (Int.bin_read_t buf ~pos_ref)
@@ -566,7 +566,7 @@ module Stable = struct
   module Current = V2
 
   let%test_module _ = (module struct
-    open Core_kernel.Std
+    open Core_kernel
 
     let buf = Bigstring.create 256
 
@@ -582,7 +582,7 @@ module Stable = struct
     ;;
 
     let test b =
-      let open Core_kernel.Std in
+      let open Core_kernel in
       let v1 = Bin_prot.Writer.to_string V1.bin_writer_t b |> String.length in
       let v2 = Bin_prot.Writer.to_string V2.bin_writer_t b |> String.length in
       (* change to true if you want to see compaction rates during testing *)
@@ -693,7 +693,7 @@ module Stable = struct
   end)
 end
 
-open! Core_kernel.Std
+open! Core_kernel
 open! Int.Replace_polymorphic_compare
 
 module T = Stable.Current

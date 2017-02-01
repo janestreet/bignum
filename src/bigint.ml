@@ -1,4 +1,4 @@
-open Core_kernel.Std
+open Core_kernel
 
 module Z = Zarith_1_4.Z
 ;;
@@ -328,7 +328,7 @@ let%test_unit "random" =
   for _ = 1 to 100_000 do
     let t = random ~state range in
     if t < zero || t >= range then failwith "random result out of bounds";
-    Core_kernel.Std.Hash_set.strict_add_exn seen t
+    Core_kernel.Hash_set.strict_add_exn seen t
   done
 ;;
 

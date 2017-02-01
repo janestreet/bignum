@@ -1,5 +1,5 @@
 (** Arbitrary-precision rational numbers. *)
-open! Core_kernel.Std
+open! Core_kernel
 
 type t
 [@@deriving hash]

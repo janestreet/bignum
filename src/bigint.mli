@@ -1,4 +1,4 @@
-open! Core_kernel.Std
+open! Core_kernel
 
 (* Arbitrary-precision integers based on Zarith 1.4.
    This implementation should be significantly faster and use less memory than [Big_int].
