@@ -333,7 +333,7 @@ let%test_unit "random" =
 ;;
 
 module For_quickcheck : sig
-  include Quickcheckable.S_bounded with type t := t
+  include Quickcheckable.S_int with type t := t
   val gen_negative : t Quickcheck.Generator.t
   val gen_positive : t Quickcheck.Generator.t
 end = struct
