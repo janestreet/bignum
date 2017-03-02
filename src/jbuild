@@ -5,6 +5,7 @@
      (core_kernel
       typerep
       num
-      zarith))))
+      zarith))
+   (preprocess (pps (ppx_jane)))))
 
 (jbuild_version jane_street)
