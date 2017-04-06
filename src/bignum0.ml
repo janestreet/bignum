@@ -8,6 +8,10 @@ module Stable = struct
 
     include Zarith.Q
 
+    let of_float_dyadic = of_float
+    let of_float = [ `dont_use_it ]
+    let _ = of_float
+
     let hash (t : t) = Hashtbl.hash t
     let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
 
@@ -35,6 +39,8 @@ module Stable = struct
 
     let to_rational_string = to_string
     let of_rational_string s = of_string s
+
+    let to_float t = Float.(/) (Z.to_float t.num) (Z.to_float t.den)
 
     let to_float_string =
       let (-) = Int.(-) in
@@ -285,7 +291,9 @@ module Stable = struct
     let%test _ = String.equal (to_string (of_int 7 / of_int 9))     "0.777777777"
     let%test _ = String.equal (to_string (of_int (-7) / of_int 9)) "-0.777777777"
     let%test _ =
-      not (equal (of_float 766.46249999999997726) (of_float 766.462499999999864))
+      not (equal
+             (of_float_dyadic 766.46249999999997726)
+             (of_float_dyadic 766.462499999999864))
 
     let%test _ = equal (of_string (to_string nan))          nan
     let%test _ = equal (of_string (to_string infinity))     infinity
@@ -310,35 +318,79 @@ module Stable = struct
     let%test _ = equal (of_string "+0.") zero
 
 
+    external format_float : string -> float -> string = "caml_format_float"
+
+    let sexp_of_t__float_string_internal t =
+      let float_string    = to_float_string t in
+      let of_float_string = of_string float_string in
+      if equal of_float_string t then Sexp.Atom float_string
+      else (
+        let diff = sub t of_float_string in
+        Sexp.List
+          [ Atom float_string
+          ; Atom "+"
+          ; Atom (to_rational_string diff)])
+    ;;
+
+    let z_10__14 = Z.pow (Z.of_int 10) 14
+    let minus_billionth = neg billionth
+    ;;
+
+    (* Same as [Zarith.Q.compare (abs t) billionth < 0] but avoiding the (abs _)
+       allocation. *)
+    let abs_t_smaller_than_billionth t =
+      if Z.sign t.num = 1
+      then Zarith.Q.compare t billionth < 0
+      else Zarith.Q.compare minus_billionth t < 0
+    ;;
+
     let sexp_of_t t =
       try
         if Z.equal t.den Z.zero
         then Sexp.Atom (to_string_when_den_is_zero ~num:t.num)
-        else
-          let float_string    = to_float_string t in
-          let of_float_string = of_string float_string in
-          if equal of_float_string t then Sexp.Atom float_string
-          else begin
-            let diff = sub t of_float_string in
-            Sexp.List [
-              Sexp.Atom float_string;
-              Sexp.Atom "+";
-              Sexp.Atom (to_rational_string diff) ]
-          end
+        else if Z.equal t.den Z.one
+        then Sexp.Atom (Z.to_string t.num)
+        else if abs_t_smaller_than_billionth t
+        then Sexp.Atom (to_rational_string t)
+        else (
+          (* Below: for better performance, we try identifying cases where the ".15g" code
+             path below is not going to be successful, and skip it if so. *)
+          if not (Z.equal Z.zero (Z.(mod) z_10__14 t.den))
+          then sexp_of_t__float_string_internal t
+          else (
+            let f = to_float t in
+            let str_15 = format_float "%.15g" f in
+            if equal (of_string str_15) t
+            then Sexp.Atom str_15
+            else sexp_of_t__float_string_internal t))
       with
       | e -> Exn.reraise e "Bignum.sexp_of_t"
     ;;
 
-    let%test _ = Sexp.equal
-             (sexp_of_t (of_int 1 / of_int 3))
-             Sexp.O.(List [Atom "0.333333333"; Atom "+"; Atom "1/3000000000"])
+    let%expect_test _ =
+      let test t = print_endline (Sexp.to_string (sexp_of_t (of_string t))) in
+      test "0";
+      [%expect {| 0 |}];
+      test "1024";
+      [%expect {| 1024 |}];
+      test "1/3";
+      [%expect {| (0.333333333 + 1/3000000000) |}];
+      test "22.4359988250446";
+      [%expect {| 22.4359988250446 |}];
+      test "22.4359988250445";
+      [%expect {| 22.4359988250445 |}];
+      test "4.79538294005e+16";
+      [%expect {| 47953829400500000 |}];
+      test "4.79538294005e-16";
+      [%expect {| 95907658801/200000000000000000000000000 |}];
+    ;;
 
-    (* these are down here instead of with of_string
-       because [%test_result: t] uses sexp_of_t *)
+    (* These are down here instead of with of_string because [%test_result: t] uses
+       [sexp_of_t]. *)
     let%test_unit "of_string matches Float.of_string" =
       let as_float s =
         [%test_result: t]
-          ~expect:(of_float (Float.of_string s))
+          ~expect:(of_float_dyadic (Float.of_string s))
           (of_string s);
       in
       List.iter
@@ -352,6 +404,7 @@ module Stable = struct
           as_float s;
           as_float ("+" ^ s);
           as_float ("-" ^ s))
+    ;;
 
     let t_of_sexp s =
       match s with
@@ -721,9 +774,6 @@ let%test _ =
 
 let to_int t = Option.try_with (fun () -> to_int_exn t)
 
-(* according to Marcin this should cost us only 1 bit of precision *)
-let to_float t = Float.(/) (Z.to_float t.num) (Z.to_float t.den)
-
 let sum xs = List.fold xs ~init:zero ~f:(+)
 
 let is_zero (x:t) = x = zero
@@ -931,7 +981,7 @@ let%test_module "round" = (module struct
     List.iter [`Up; `Down; `Nearest; `Zero] ~f:(fun dir ->
       [%test_result: float] ~message:(dir_to_string dir)
         ~expect:(Float.round ~dir f)
-        (to_float (round ~dir (of_float f))))
+        (to_float (round ~dir (of_float_dyadic f))))
   ;;
 
   let%test_unit _ =
@@ -966,10 +1016,13 @@ end)
 
 include (Hashable.Make_binable (T) : Hashable.S_binable with type t := t)
 
+let of_float_decimal f = of_string (Float.to_string_round_trippable f)
+
 module O = struct
   let ( + ) = ( + )
   let ( - ) = ( - )
   let ( / ) = ( / )
+  let ( // ) = ( // )
   let ( * ) = ( * )
   let ( ** ) = ( ** )
 
@@ -996,7 +1049,10 @@ module O = struct
   let trillionth = trillionth
 
   let of_int    = of_int
-  let of_float  = of_float
+
+  let of_float_dyadic = of_float_dyadic
+  let of_float_decimal = of_float_decimal
+  let of_float = of_float_dyadic
 end
 
 module For_quickcheck = struct
@@ -1119,3 +1175,13 @@ let gen_finite       = For_quickcheck.gen_finite
 let gen_incl         = For_quickcheck.gen_incl
 let gen_uniform_excl = For_quickcheck.gen_uniform_excl
 let shrinker         = For_quickcheck.shrinker
+
+module For_utop : sig end = struct
+  include Pretty_printer.Register (struct
+      include T
+      let module_name = "Bignum.Std.Bignum"
+      let to_string t = Sexp.to_string (sexp_of_t t)
+    end)
+end
+
+let of_float = of_float_dyadic

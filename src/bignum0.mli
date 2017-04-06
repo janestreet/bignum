@@ -4,16 +4,15 @@ open! Core_kernel
 type t
 [@@deriving hash]
 
-(** Sexp conversions represent values as decimals of up to nine decimal places if
-    possible, or else as [(x + y/z)] where [x] is decimal and [y] and [z] are integers. So
-    for example, 1/3 <-> (0.333333333 + 1/3000000000).  In string and sexp conversions,
-    values with denominator of zero are special-cased: 0/0 <-> "nan", 1/0 <-> "inf", and
-    -1/0 <-> "-inf". *)
+(** Sexp conversions represent values as decimals if possible, or defaults to [(x + y/z)]
+    where [x] is decimal and [y] and [z] are integers.  So for example, 1/3 <->
+    (0.333333333 + 1/3000000000).  In string and sexp conversions, values with denominator
+    of zero are special-cased: 0/0 <-> "nan", 1/0 <-> "inf", and -1/0 <-> "-inf". *)
 include Sexpable       with type t := t
 include Comparable     with type t := t
-include Floatable      with type t := t
 include Hashable       with type t := t
 include Binable        with type t := t
+
 (** [gen] produces values with an order of magnitude (roughly the number of digits) in the
     numerator and denominator proportional to [Quickcheck.Generator.size].  Also includes
     values with zero in the denominator. *)
@@ -38,7 +37,11 @@ val trillionth : t
 val ( + )    : t -> t -> t
 val ( - )    : t -> t -> t
 val ( / )    : t -> t -> t
+
+(** [m // n] is equivalent to [of_int m / of_int n].  Example: [Bigint.O.(2 // 3)]. *)
+val ( // )   : int -> int -> t
 val ( * )    : t -> t -> t
+
 (** Beware: [2 ** 8_000_000] will take at least a megabyte to store the result,
     and multiplying numbers a megabyte long is slow no matter how clever your algorithm.
     Be careful to ensure the second argument is reasonably-sized. *)
@@ -88,6 +91,49 @@ val round_decimal
     Consider using [sexp_of_t] if you need lossless stringification. *)
 val to_string  : t -> string
 val to_float   : t -> float
+
+(** Transforming a [float] into a [Bignum.t] needs to be done with care.  Most rationals
+    and decimals are not exactly representable as floats, thus their float representation
+    includes some small imprecision at the end of their decimal form (typically after the
+    17th digits).  It is very likely that when transforming a [float] into a [Bignum.t],
+    it is best to try to determine which was the original value and retrieve it instead of
+    honoring the noise coming from its imprecise float representation.
+
+    Given that the original value is not available in the context of a function whose type
+    is [float -> Bignum.t], it is not possible to solve that problem in a principled way.
+    However, a very reasonable approximation is to build the [Bignum] from a short
+    string-representation of the float that guarantees the round-trip [float |> to_string
+    |> of_string].  In particular, if the float was obtained from a short decimal string,
+    this heuristic in practice succeeds at retrieving the original value.
+
+    In the context where it is assumed that a float is a perfect representative of the
+    value meant to be modelled, the actual [Bignum.t] value for it may be built using
+    [of_float_dyadic].
+
+    For example:
+
+    [3.14] is not a representable decimal, thus:
+
+    {[
+      of_float_dyadic (Float.of_string "3.14") = (3.14 + 7/56294995342131200)
+    ]}
+
+    {[
+      of_float_decimal (Float.of_string "3.14") = 3.14
+    ]}
+
+    [of_float_dyadic] used to be called [of_float] but we think it is not the right
+    default choice, thus [of_float] was deprecated, and we introduced different names for
+    this operation to force some explicit decision at call site.
+
+    After some time has passed, [of_float_decimal] will be renamed to [of_float], thus
+    re-introducing [of_float] in the API. *)
+val of_float_decimal : float -> t
+val of_float_dyadic : float -> t
+
+val of_float : float -> t
+[@@deprecated "[since 2017-03]: Use [of_float_decimal] or [of_float_dyadic]"]
+
 (** Rounds toward zero. [None] if the conversion would overflow *)
 val to_int     : t -> int option
 val to_int_exn : t -> int
@@ -96,7 +142,6 @@ val sign       : t -> int
 
 val of_string : string -> t
 val of_int    : int -> t
-val of_float  : float -> t
 
 (** [num t] returns the numerator of the numeric *)
 val num : t -> t
@@ -143,6 +188,7 @@ module O : sig
   val ( + )    : t -> t -> t
   val ( - )    : t -> t -> t
   val ( / )    : t -> t -> t
+  val ( // )   : int -> int -> t
   val ( * )    : t -> t -> t
   val ( ** )   : t -> int -> t
   val abs      : t -> t
@@ -167,5 +213,9 @@ module O : sig
   val trillionth : t
 
   val of_int    : int -> t
+
+  val of_float_decimal : float -> t
+  val of_float_dyadic : float -> t
   val of_float  : float -> t
+  [@@deprecated "[since 2017-03]"]
 end
