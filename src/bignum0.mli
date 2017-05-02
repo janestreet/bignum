@@ -194,7 +194,7 @@ module O : sig
   val abs      : t -> t
   val neg      : t -> t
 
-  include Core_kernel.Polymorphic_compare_intf.Infix with type t := t
+  include Core_kernel.Comparisons.Infix with type t := t
 
   val zero     : t
   val one      : t

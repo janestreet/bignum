@@ -1016,7 +1016,7 @@ end)
 
 include (Hashable.Make_binable (T) : Hashable.S_binable with type t := t)
 
-let of_float_decimal f = of_string (Float.to_string_round_trippable f)
+let of_float_decimal f = of_string (Float.to_string f)
 
 module O = struct
   let ( + ) = ( + )
@@ -1027,7 +1027,7 @@ module O = struct
   let ( ** ) = ( ** )
 
   include (Replace_polymorphic_compare :
-             Core_kernel.Polymorphic_compare_intf.Infix with type t := t)
+             Core_kernel.Comparisons.Infix with type t := t)
 
   let abs = abs
   let neg = neg
