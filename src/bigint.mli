@@ -1,6 +1,6 @@
 open! Core_kernel
 
-(* Arbitrary-precision integers based on Zarith 1.4.
+(* Arbitrary-precision integers based on Zarith.
    This implementation should be significantly faster and use less memory than [Big_int].
    See benchmarks labeled "vs. Big_int" in the implementation. *)
 type t
@@ -21,8 +21,8 @@ val of_int32     : Int32.t   -> t
 val of_int64     : Int64.t   -> t
 val of_nativeint : nativeint -> t
 
-val to_zarith_bigint : t -> Zarith_1_4.Z.t
-val of_zarith_bigint : Zarith_1_4.Z.t -> t
+val to_zarith_bigint : t -> Zarith.Z.t
+val of_zarith_bigint : Zarith.Z.t -> t
 
 (** [random t] produces a value uniformly distributed between [zero] (inclusive) and
     [t] (exclusive), or raises if [t <= zero]. *)

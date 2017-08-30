@@ -1,6 +1,6 @@
 open Core_kernel
 
-module Z = Zarith_1_4.Z
+module Z = Zarith.Z
 ;;
 
 type t = Z.t [@@deriving typerep ~abstract]

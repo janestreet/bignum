@@ -1,6 +1,5 @@
 module Stable = struct
   module V1 = struct
-    module Zarith = Zarith_1_4
     module Z = Zarith.Z
 
     open Core_kernel
