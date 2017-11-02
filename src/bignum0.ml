@@ -252,12 +252,12 @@ module Stable = struct
         if !underscores > 0
         then
           begin
-            let s' = String.create Int.(length - !underscores) in
+            let s' = Bytes.create Int.(length - !underscores) in
             let j = ref 0 in
             for i = 0 to Int.pred length do
               match s.[i] with
               | '_' -> ()
-              | c -> s'.[!j] <- c; incr j
+              | c -> Bytes.set s' !j c; incr j
             done;
             s'
           end
