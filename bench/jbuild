@@ -1,5 +1,6 @@
 (library
  ((name bignum_benchmarks)
+(flags (:standard -safe-string))
   (libraries (core bignum))
   (preprocess (pps (ppx_jane ppx_driver.runner)))))
 

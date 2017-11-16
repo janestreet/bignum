@@ -252,14 +252,12 @@ module Stable = struct
         if !underscores > 0
         then
           begin
-            let s' = Bytes.create Int.(length - !underscores) in
-            let j = ref 0 in
-            for i = 0 to Int.pred length do
-              match s.[i] with
-              | '_' -> ()
-              | c -> Bytes.set s' !j c; incr j
-            done;
-            s'
+            let underscores_seen = ref 0 in
+            String.init Int.(length - !underscores) ~f:(fun i ->
+              while Char.equal s.[Int.(+) i !underscores_seen] '_' do
+                incr underscores_seen
+              done;
+              s.[Int.(+) i !underscores_seen])
           end
         else s
       ;;

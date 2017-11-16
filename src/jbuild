@@ -1,6 +1,7 @@
 (library
   ((name bignum)
    (public_name bignum)
+  (flags (:standard -safe-string))
    (libraries
      (core_kernel
       typerep
