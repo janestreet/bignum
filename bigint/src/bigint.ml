@@ -15,7 +15,7 @@ module Stable = struct
       type nonrec t = t
       ;;
 
-      let module_name = "Bignum.Std.Bigint"
+      let module_name = "Bigint"
       ;;
 
       let to_string = Z.to_string
@@ -465,197 +465,199 @@ end
 ;;
 
 
-let%test_module "stable bin_io" = (module struct
+let%test_module "stable bin_io" =
+  (module struct
 
-  let array =
-    Array.init 10 ~f:(fun i ->
-      pow (of_int 1_000_000_000) (of_int i))
-  ;;
+    let array =
+      Array.init 10 ~f:(fun i ->
+        pow (of_int 1_000_000_000) (of_int i))
+    ;;
 
-  let size_of_buf = 1024
+    let size_of_buf = 1024
 
-  let buf = Bigstring.create size_of_buf
+    let buf = Bigstring.create size_of_buf
 
-  let%test_unit "round-trip" =
-    for pos = 0 to 20 do
-      Array.iter array ~f:(fun t ->
-        let size_of_t = Stable.V1.bin_size_t t in
-        assert Int.(size_of_t + pos <= size_of_buf);
-        let new_pos = Stable.V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos t in
-        let pos_ref = ref pos in
-        let t1 = Stable.V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref in
-        [%test_result: Stable.V1.t] t1 ~expect:t;
-        [%test_result: int] !pos_ref ~expect:new_pos;
-      )
-    done
-  ;;
-end)
+    let%test_unit "round-trip" =
+      for pos = 0 to 20 do
+        Array.iter array ~f:(fun t ->
+          let size_of_t = Stable.V1.bin_size_t t in
+          assert Int.(size_of_t + pos <= size_of_buf);
+          let new_pos = Stable.V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos t in
+          let pos_ref = ref pos in
+          let t1 = Stable.V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref in
+          [%test_result: Stable.V1.t] t1 ~expect:t;
+          [%test_result: int] !pos_ref ~expect:new_pos;
+        )
+      done
+    ;;
+  end)
 
-let%test_module "vs Int" = (module struct
+let%test_module "vs Int" =
+  (module struct
 
-  let%test_unit "constants" =
-    [%test_eq: int] Int.zero      (to_int_exn zero);
-    [%test_eq: int] Int.one       (to_int_exn one);
-    [%test_eq: int] Int.minus_one (to_int_exn minus_one)
-  ;;
+    let%test_unit "constants" =
+      [%test_eq: int] Int.zero      (to_int_exn zero);
+      [%test_eq: int] Int.one       (to_int_exn one);
+      [%test_eq: int] Int.minus_one (to_int_exn minus_one)
+    ;;
 
-  let%test_unit "unary" =
-    let nums =
-      [ -1001001001 ; -1001001 ; -1001 ; -1 ; 0 ; 1 ; 1234 ; 1234567 ; 123456789 ]
-    in
-    let ops =
-      [ Int.( ~- ) , ( ~- ), "( ~- )"
-      ; Int.neg    , neg    , "neg"
-      ; Int.abs    , abs    , "abs"
-      ; Int.succ   , succ   , "succ"
-      ; Int.pred   , pred   , "pred"
-      ; Int.bit_not, bit_not, "bit_not"
-      ]
-    in
-    List.iter ops ~f:(fun (int_op, big_op, op_str) ->
-      List.iter nums ~f:(fun int_x ->
-        let expect = Option.try_with (fun () -> int_op int_x) in
-        let big_x = of_int_exn int_x in
-        let big_actual = Option.try_with (fun () -> big_op big_x) in
-        let int_actual = Option.map big_actual ~f:to_int_exn in
-        [%test_result: int option]
-          ~message:(sprintf "Bigint does not match [Int.%s %d]" op_str int_x)
-          ~expect
-          int_actual))
-  ;;
-
-  let%test_unit "binops" =
-    let nums =
-      [ -10101 ; -101 ; -1 ; 0 ; 1 ; 123 ; 12345 ]
-    in
-    let wrap_round f x y = f x ~to_multiple_of:y in
-    let wrap_compare f x y = of_int_exn (f x y) in
-    let ops =
-      [ Int.( + ) , ( + ) , "( + )"
-      ; Int.( - ) , ( - ) , "( - )"
-      ; Int.( * ) , ( * ) , "( * )"
-      ; Int.( / ) , ( / ) , "( / )"
-      ; Int.rem   , rem   , "rem"
-      ; Int.( /% ), ( /% ), "( /% )"
-      ; Int.( % ) , ( % ) , "( % )"
-      ; Int.bit_and, bit_and, "bit_and"
-      ; Int.bit_or , bit_or , "bit_or"
-      ; Int.bit_xor, bit_xor, "bit_xor"
-      ; Int.compare, wrap_compare compare, "compare"
-      ; wrap_round Int.round_down    , wrap_round round_down    , "round_down"
-      ; wrap_round Int.round_up      , wrap_round round_up      , "round_up"
-      ; wrap_round Int.round_nearest , wrap_round round_nearest , "round_nearest"
-      ; ( wrap_round Int.round_towards_zero
-        , wrap_round round_towards_zero
-        , "round_towards_zero" )
-      ]
-    in
-    List.iter ops ~f:(fun (int_op, big_op, op_str) ->
-      List.iter nums ~f:(fun int_x ->
-        List.iter nums ~f:(fun int_y ->
-          let expect = Option.try_with (fun () -> int_op int_x int_y) in
+    let%test_unit "unary" =
+      let nums =
+        [ -1001001001 ; -1001001 ; -1001 ; -1 ; 0 ; 1 ; 1234 ; 1234567 ; 123456789 ]
+      in
+      let ops =
+        [ Int.( ~- ) , ( ~- ), "( ~- )"
+        ; Int.neg    , neg    , "neg"
+        ; Int.abs    , abs    , "abs"
+        ; Int.succ   , succ   , "succ"
+        ; Int.pred   , pred   , "pred"
+        ; Int.bit_not, bit_not, "bit_not"
+        ]
+      in
+      List.iter ops ~f:(fun (int_op, big_op, op_str) ->
+        List.iter nums ~f:(fun int_x ->
+          let expect = Option.try_with (fun () -> int_op int_x) in
           let big_x = of_int_exn int_x in
-          let big_y = of_int_exn int_y in
-          let big_actual = Option.try_with (fun () -> big_op big_x big_y) in
+          let big_actual = Option.try_with (fun () -> big_op big_x) in
           let int_actual = Option.map big_actual ~f:to_int_exn in
           [%test_result: int option]
-            ~message:(sprintf "Bigint does not match [Int.%s %d %d]" op_str int_x int_y)
+            ~message:(sprintf "Bigint does not match [Int.%s %d]" op_str int_x)
             ~expect
-            int_actual)))
-  ;;
+            int_actual))
+    ;;
 
-  let%test_unit "comparisons" =
-    let nums =
-      [ -1001001001 ; -1001001 ; -1001 ; -1 ; 0 ; 1 ; 1234 ; 1234567 ; 123456789 ]
-    in
-    let ops =
-      [ Int.( <> ), ( <> ), "( <> )"
-      ; Int.( <= ), ( <= ), "( <= )"
-      ; Int.( >= ), ( >= ), "( >= )"
-      ; Int.( < ) , ( < ) , "( < )"
-      ; Int.( > ) , ( > ) , "( > )"
-      ; Int.( = ) , ( = ) , "( = )"
-      ; Int.equal, equal, "equal"
-      ]
-    in
-    List.iter ops ~f:(fun (int_op, big_op, op_str) ->
-      List.iter nums ~f:(fun int_x ->
-        List.iter nums ~f:(fun int_y ->
-          let expect = int_op int_x int_y in
-          let big_x = of_int_exn int_x in
-          let big_y = of_int_exn int_y in
-          let actual = big_op big_x big_y in
-          [%test_result: bool]
-            ~message:(sprintf "Bigint does not match [Int.%s %d %d]" op_str int_x int_y)
-            ~expect
-            actual)))
-  ;;
+    let%test_unit "binops" =
+      let nums =
+        [ -10101 ; -101 ; -1 ; 0 ; 1 ; 123 ; 12345 ]
+      in
+      let wrap_round f x y = f x ~to_multiple_of:y in
+      let wrap_compare f x y = of_int_exn (f x y) in
+      let ops =
+        [ Int.( + ) , ( + ) , "( + )"
+        ; Int.( - ) , ( - ) , "( - )"
+        ; Int.( * ) , ( * ) , "( * )"
+        ; Int.( / ) , ( / ) , "( / )"
+        ; Int.rem   , rem   , "rem"
+        ; Int.( /% ), ( /% ), "( /% )"
+        ; Int.( % ) , ( % ) , "( % )"
+        ; Int.bit_and, bit_and, "bit_and"
+        ; Int.bit_or , bit_or , "bit_or"
+        ; Int.bit_xor, bit_xor, "bit_xor"
+        ; Int.compare, wrap_compare compare, "compare"
+        ; wrap_round Int.round_down    , wrap_round round_down    , "round_down"
+        ; wrap_round Int.round_up      , wrap_round round_up      , "round_up"
+        ; wrap_round Int.round_nearest , wrap_round round_nearest , "round_nearest"
+        ; ( wrap_round Int.round_towards_zero
+          , wrap_round round_towards_zero
+          , "round_towards_zero" )
+        ]
+      in
+      List.iter ops ~f:(fun (int_op, big_op, op_str) ->
+        List.iter nums ~f:(fun int_x ->
+          List.iter nums ~f:(fun int_y ->
+            let expect = Option.try_with (fun () -> int_op int_x int_y) in
+            let big_x = of_int_exn int_x in
+            let big_y = of_int_exn int_y in
+            let big_actual = Option.try_with (fun () -> big_op big_x big_y) in
+            let int_actual = Option.map big_actual ~f:to_int_exn in
+            [%test_result: int option]
+              ~message:(sprintf "Bigint does not match [Int.%s %d %d]" op_str int_x int_y)
+              ~expect
+              int_actual)))
+    ;;
 
-  let%test_unit "shift" =
-    let nums =
-      [ -10101 ; -101 ; -1 ; 0 ; 1 ; 123 ; 12345 ]
-    in
-    let ops =
-      [ Int.shift_left , shift_left , "shift_left"
-      ; Int.shift_right, shift_right, "shift_right"
-      ]
-    in
-    List.iter ops ~f:(fun (int_op, big_op, op_str) ->
-      List.iter nums ~f:(fun int_x ->
-        for int_y = 0 to 15 do
-          let expect = Option.try_with (fun () -> int_op int_x int_y) in
-          let big_x = of_int_exn int_x in
-          let big_actual = Option.try_with (fun () -> big_op big_x int_y) in
+    let%test_unit "comparisons" =
+      let nums =
+        [ -1001001001 ; -1001001 ; -1001 ; -1 ; 0 ; 1 ; 1234 ; 1234567 ; 123456789 ]
+      in
+      let ops =
+        [ Int.( <> ), ( <> ), "( <> )"
+        ; Int.( <= ), ( <= ), "( <= )"
+        ; Int.( >= ), ( >= ), "( >= )"
+        ; Int.( < ) , ( < ) , "( < )"
+        ; Int.( > ) , ( > ) , "( > )"
+        ; Int.( = ) , ( = ) , "( = )"
+        ; Int.equal, equal, "equal"
+        ]
+      in
+      List.iter ops ~f:(fun (int_op, big_op, op_str) ->
+        List.iter nums ~f:(fun int_x ->
+          List.iter nums ~f:(fun int_y ->
+            let expect = int_op int_x int_y in
+            let big_x = of_int_exn int_x in
+            let big_y = of_int_exn int_y in
+            let actual = big_op big_x big_y in
+            [%test_result: bool]
+              ~message:(sprintf "Bigint does not match [Int.%s %d %d]" op_str int_x int_y)
+              ~expect
+              actual)))
+    ;;
+
+    let%test_unit "shift" =
+      let nums =
+        [ -10101 ; -101 ; -1 ; 0 ; 1 ; 123 ; 12345 ]
+      in
+      let ops =
+        [ Int.shift_left , shift_left , "shift_left"
+        ; Int.shift_right, shift_right, "shift_right"
+        ]
+      in
+      List.iter ops ~f:(fun (int_op, big_op, op_str) ->
+        List.iter nums ~f:(fun int_x ->
+          for int_y = 0 to 15 do
+            let expect = Option.try_with (fun () -> int_op int_x int_y) in
+            let big_x = of_int_exn int_x in
+            let big_actual = Option.try_with (fun () -> big_op big_x int_y) in
+            let int_actual = Option.map big_actual ~f:to_int_exn in
+            [%test_result: int option]
+              ~message:(sprintf "Bigint does not match [Int.%s %d %d]" op_str int_x int_y)
+              ~expect
+              int_actual
+          done))
+    ;;
+
+    let%test_unit "pow" =
+      let bases = [ -101 ; -11 ; -1 ; 0 ; 1 ; 12 ; 123 ] in
+      List.iter bases ~f:(fun base ->
+        for expt = -4 to 4 do
+          let expect = Option.try_with (fun () -> Int.pow base expt) in
+          let big_base = of_int_exn base in
+          let big_expt = of_int_exn expt in
+          let big_actual = Option.try_with (fun () -> pow big_base big_expt) in
           let int_actual = Option.map big_actual ~f:to_int_exn in
           [%test_result: int option]
-            ~message:(sprintf "Bigint does not match [Int.%s %d %d]" op_str int_x int_y)
+            ~message:(sprintf "Bigint does not match [Int.pow %d %d]" base expt)
             ~expect
             int_actual
-        done))
-  ;;
+        done)
+    ;;
 
-  let%test_unit "pow" =
-    let bases = [ -101 ; -11 ; -1 ; 0 ; 1 ; 12 ; 123 ] in
-    List.iter bases ~f:(fun base ->
-      for expt = -4 to 4 do
-        let expect = Option.try_with (fun () -> Int.pow base expt) in
-        let big_base = of_int_exn base in
-        let big_expt = of_int_exn expt in
-        let big_actual = Option.try_with (fun () -> pow big_base big_expt) in
-        let int_actual = Option.map big_actual ~f:to_int_exn in
-        [%test_result: int option]
-          ~message:(sprintf "Bigint does not match [Int.pow %d %d]" base expt)
-          ~expect
-          int_actual
-      done)
-  ;;
+    let%test_unit "huge" =
+      let huge_val = pow (of_int_exn 1001) (of_int_exn 10) in
+      let huge_str = "1010045120210252210120045010001" in
+      let huge_hum = "1_010_045_120_210_252_210_120_045_010_001" in
+      let huge_hex = "0xcbfa1bdc2045351f4de129c51" in
+      let huge_hex_hum = "0xc_bfa1_bdc2_0453_51f4_de12_9c51" in
+      let huge_hex_caps = String.uppercase huge_hex_hum in
+      let huge_sexp = Sexp.Atom huge_str in
+      let huge_hex_sexp = Sexp.Atom huge_hex in
+      [%test_result: int option]
+        (Option.try_with (fun () -> to_int_exn huge_val))
+        ~expect:None;
+      [%test_result: string] (to_string huge_val)          ~expect:huge_str;
+      [%test_result: string] (to_string_hum huge_val)      ~expect:huge_hum;
+      [%test_result: Sexp.t] (sexp_of_t huge_val)          ~expect:huge_sexp;
+      [%test_result: t]      (of_string huge_str)          ~expect:huge_val;
+      [%test_result: t]      (of_string huge_hum)          ~expect:huge_val;
+      [%test_result: t]      (t_of_sexp huge_sexp)         ~expect:huge_val;
+      [%test_result: string] (Hex.to_string huge_val)      ~expect:huge_hex;
+      [%test_result: string] (Hex.to_string_hum huge_val)  ~expect:huge_hex_hum;
+      [%test_result: Sexp.t] (Hex.sexp_of_t huge_val)      ~expect:huge_hex_sexp;
+      [%test_result: t]      (Hex.of_string huge_hex)      ~expect:huge_val;
+      [%test_result: t]      (Hex.of_string huge_hex_hum)  ~expect:huge_val;
+      [%test_result: t]      (Hex.of_string huge_hex_caps) ~expect:huge_val;
+      [%test_result: t]      (Hex.t_of_sexp huge_hex_sexp) ~expect:huge_val
+    ;;
 
-  let%test_unit "huge" =
-    let huge_val = pow (of_int_exn 1001) (of_int_exn 10) in
-    let huge_str = "1010045120210252210120045010001" in
-    let huge_hum = "1_010_045_120_210_252_210_120_045_010_001" in
-    let huge_hex = "0xcbfa1bdc2045351f4de129c51" in
-    let huge_hex_hum = "0xc_bfa1_bdc2_0453_51f4_de12_9c51" in
-    let huge_hex_caps = String.uppercase huge_hex_hum in
-    let huge_sexp = Sexp.Atom huge_str in
-    let huge_hex_sexp = Sexp.Atom huge_hex in
-    [%test_result: int option]
-      (Option.try_with (fun () -> to_int_exn huge_val))
-      ~expect:None;
-    [%test_result: string] (to_string huge_val)          ~expect:huge_str;
-    [%test_result: string] (to_string_hum huge_val)      ~expect:huge_hum;
-    [%test_result: Sexp.t] (sexp_of_t huge_val)          ~expect:huge_sexp;
-    [%test_result: t]      (of_string huge_str)          ~expect:huge_val;
-    [%test_result: t]      (of_string huge_hum)          ~expect:huge_val;
-    [%test_result: t]      (t_of_sexp huge_sexp)         ~expect:huge_val;
-    [%test_result: string] (Hex.to_string huge_val)      ~expect:huge_hex;
-    [%test_result: string] (Hex.to_string_hum huge_val)  ~expect:huge_hex_hum;
-    [%test_result: Sexp.t] (Hex.sexp_of_t huge_val)      ~expect:huge_hex_sexp;
-    [%test_result: t]      (Hex.of_string huge_hex)      ~expect:huge_val;
-    [%test_result: t]      (Hex.of_string huge_hex_hum)  ~expect:huge_val;
-    [%test_result: t]      (Hex.of_string huge_hex_caps) ~expect:huge_val;
-    [%test_result: t]      (Hex.t_of_sexp huge_hex_sexp) ~expect:huge_val
-  ;;
-
-end)
+  end)
 ;;

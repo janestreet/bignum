@@ -1,52 +1,51 @@
 open Core
-open Bignum.Std
 open Bignum
 
 let number_literals =
-    [ "-100.00000000";
-      "100.00000000";
-      "0.00000000";
-      "-200.00000000";
-      "200.00000000";
-      "-300.00000000";
-      "300.00000000";
-      "-400.00000000";
-      "-1000.00000000";
-      "1000.00000000";
-      "-1.00000000";
-      "400.00000000";
-      "-500.00000000";
-      "1.00000000";
-      "500.00000000";
-      "-600.00000000";
-      "-2000.00000000";
-      "2.00000000";
-      "-2.00000000";
-      "600.00000000";
-      "0.20720000";
-      "-0.20227524";
-      "0.18800000";
-      "0.16550000";
-      "0.15950000";
-      "0.13000000";
-      "0.12950000";
-      "0.11950000";
-      "-0.07232871";
-      "0.05950000";
-      "-0.05424653";
-      "0.04600437";
-      "0.04600000";
-      "0.04050000";
-      "-0.03616435";
-      "0.03550391";
-      "0.03550000";
-      "0.02000000";
-      "0.01950000";
-      "0.01050000";
-      "-316673.67291835";
-      "3423.123456789";
-      "-3423.1234567891";
-    ]
+  [ "-100.00000000"
+  ; "100.00000000"
+  ; "0.00000000"
+  ; "-200.00000000"
+  ; "200.00000000"
+  ; "-300.00000000"
+  ; "300.00000000"
+  ; "-400.00000000"
+  ; "-1000.00000000"
+  ; "1000.00000000"
+  ; "-1.00000000"
+  ; "400.00000000"
+  ; "-500.00000000"
+  ; "1.00000000"
+  ; "500.00000000"
+  ; "-600.00000000"
+  ; "-2000.00000000"
+  ; "2.00000000"
+  ; "-2.00000000"
+  ; "600.00000000"
+  ; "0.20720000"
+  ; "-0.20227524"
+  ; "0.18800000"
+  ; "0.16550000"
+  ; "0.15950000"
+  ; "0.13000000"
+  ; "0.12950000"
+  ; "0.11950000"
+  ; "-0.07232871"
+  ; "0.05950000"
+  ; "-0.05424653"
+  ; "0.04600437"
+  ; "0.04600000"
+  ; "0.04050000"
+  ; "-0.03616435"
+  ; "0.03550391"
+  ; "0.03550000"
+  ; "0.02000000"
+  ; "0.01950000"
+  ; "0.01050000"
+  ; "-316673.67291835"
+  ; "3423.123456789"
+  ; "-3423.1234567891"
+  ]
 ;;
 
 let scientific_literals =
@@ -219,40 +218,41 @@ let%bench_module "Bignum of_sexp/to_sexp" =
   end)
 ;;
 
-let%bench_module "Bignum binprot" = (module struct
+let%bench_module "Bignum binprot" =
+  (module struct
 
-  let buf = Bigstring.create 128
+    let buf = Bigstring.create 128
 
-  let%bench "roundtrip compact" = List.iter numbers_decimal ~f:(fun b ->
-    let (_ : int) =
-      Stable.V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b
-    in
-    let (_ : Stable.V2.t) =
-      Stable.V2.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0)
-    in
-    ())
-  ;;
+    let%bench "roundtrip compact" = List.iter numbers_decimal ~f:(fun b ->
+      let (_ : int) =
+        Stable.V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b
+      in
+      let (_ : Stable.V2.t) =
+        Stable.V2.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0)
+      in
+      ())
+    ;;
 
-  let%bench "roundtrip classic" = List.iter numbers_decimal ~f:(fun b ->
-    let (_ : int) =
-      Stable.V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b
-    in
-    let (_ : Stable.V1.t) =
-      Stable.V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0)
-    in
-    ())
-  ;;
-end)
+    let%bench "roundtrip classic" = List.iter numbers_decimal ~f:(fun b ->
+      let (_ : int) =
+        Stable.V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b
+      in
+      let (_ : Stable.V1.t) =
+        Stable.V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0)
+      in
+      ())
+    ;;
+  end)
 
 let%bench_module "round" = (module struct
-  let%bench_fun "round_decimal" [@indexed digits = [0;3;6;9]] =
-    fun () ->
-    List.iter numbers_decimal ~f:(fun number -> ignore (round_decimal number ~digits : t))
-  ;;
+                             let%bench_fun "round_decimal" [@indexed digits = [0;3;6;9]] =
+fun () ->
+  List.iter numbers_decimal ~f:(fun number -> ignore (round_decimal number ~digits : t))
+;;
 
-  let%bench "round" =
-    List.iter numbers_decimal ~f:(fun number -> ignore (round number : t))
-  ;;
+let%bench "round" =
+  List.iter numbers_decimal ~f:(fun number -> ignore (round number : t))
+;;
 end)
 
 

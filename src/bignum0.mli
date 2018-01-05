@@ -181,9 +181,9 @@ end
 module O : sig
 
   (* If you want to add values here, you need to make sure that it won't create unexpected
-  behavior in modules that use this. For instance, if you want to add "val qty : t" here,
-  then you might be creating unexpected behavior in modules that had Bignum.(qty /
-  thousand *)
+     behavior in modules that use this. For instance, if you want to add "val qty : t"
+     here, then you might be creating unexpected behavior in modules that had Bignum.(qty
+     / thousand *)
 
   val ( + )    : t -> t -> t
   val ( - )    : t -> t -> t

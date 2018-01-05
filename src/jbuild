@@ -3,10 +3,12 @@
    (public_name bignum)
   (flags (:standard -safe-string))
    (libraries
-     (core_kernel
-      typerep
-      num
-      zarith))
+    (core_kernel
+     bigint
+     typerep
+     num
+     zarith))
    (preprocess (pps (ppx_jane ppx_driver.runner)))))
+
 
 (jbuild_version 1)

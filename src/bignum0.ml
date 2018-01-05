@@ -150,12 +150,12 @@ module Stable = struct
       ;;
 
       (* There are six possible cases to parse:
-        - the string is in rational notation: it is of the form `a / b`
-        - the string is in scientific notation: it is of the form `a E b` (a.b E c )
-        - the stringis in floating point notation: it is of the form `a.b`
-        - the string is in decimal notation: it is of the form `i` where i is an int
-        - the string is nan, +nan, -nan, inf, +inf, -inf
-        - the string is invalid
+         - the string is in rational notation: it is of the form `a / b`
+         - the string is in scientific notation: it is of the form `a E b` (a.b E c )
+         - the stringis in floating point notation: it is of the form `a.b`
+         - the string is in decimal notation: it is of the form `i` where i is an int
+         - the string is nan, +nan, -nan, inf, +inf, -inf
+         - the string is invalid
       *)
 
       (* Use a bitset to implement the state *)
@@ -164,7 +164,7 @@ module Stable = struct
       let has_exp   = 4
 
       (* perform a case analysis on the state, the position of the various tokens
-      ('.','e','/') and constructs the bignum that was parsed. *)
+         ('.','e','/') and constructs the bignum that was parsed. *)
       let make s ~length ~state ~dot ~exp ~slash =
         let open Int in
         let is_negative, skip_sign =
@@ -226,7 +226,7 @@ module Stable = struct
             else decompose s ~length (succ i) ~state:(state lor has_exp) ~dot ~exp:i ~slash
           | '+' | '-' ->
             (* the only place where signs are allowed is at the very beginning, or after
-            an exp sign (in scientific notation). *)
+               an exp sign (in scientific notation). *)
             if i = 0 || pred i = exp
             then decompose s ~length (succ i) ~state  ~dot ~exp ~slash
             else fail s
@@ -615,132 +615,133 @@ module Stable = struct
      call a of/to v1 function (which would be the identity) *)
   module Current = V2
 
-  let%test_module _ = (module struct
-    open Core_kernel
+  let%test_module _ =
+    (module struct
+      open Core_kernel
 
-    let buf = Bigstring.create 256
+      let buf = Bigstring.create 256
 
-    let roundtrip b =
-      for pos = 0 to 17 do
-        let (_ : int) = V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
-        let result1  = V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref pos) in
-        let (_ : int) = V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
-        let result2  = V2.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref pos) in
-        [%test_eq: V1.t] b result1;
-        [%test_eq: V2.t] b result2;
-      done
-    ;;
+      let roundtrip b =
+        for pos = 0 to 17 do
+          let (_ : int) = V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
+          let result1  = V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref pos) in
+          let (_ : int) = V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
+          let result2  = V2.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref pos) in
+          [%test_eq: V1.t] b result1;
+          [%test_eq: V2.t] b result2;
+        done
+      ;;
 
-    let test b =
-      let open Core_kernel in
-      let v1 = Bin_prot.Writer.to_string V1.bin_writer_t b |> String.length in
-      let v2 = Bin_prot.Writer.to_string V2.bin_writer_t b |> String.length in
-      (* change to true if you want to see compaction rates during testing *)
-      if false then
-        printf "%s v1: %i v2: %i\n" (V1.sexp_of_t b |> Sexp.to_string_mach)
-          v1 v2;
-      roundtrip b;
-    ;;
+      let test b =
+        let open Core_kernel in
+        let v1 = Bin_prot.Writer.to_string V1.bin_writer_t b |> String.length in
+        let v2 = Bin_prot.Writer.to_string V2.bin_writer_t b |> String.length in
+        (* change to true if you want to see compaction rates during testing *)
+        if false then
+          printf "%s v1: %i v2: %i\n" (V1.sexp_of_t b |> Sexp.to_string_mach)
+            v1 v2;
+        roundtrip b;
+      ;;
 
-    (* This checks an axiom used in the proof of [check_overflow] *)
-    let%test _ = Int.(-max_value > min_value)
-    ;;
+      (* This checks an axiom used in the proof of [check_overflow] *)
+      let%test _ = Int.(-max_value > min_value)
+      ;;
 
-    (* This contains a test for all branches.*)
-    let%test_unit _ = test Current.zero (* test for Zero *)
-    let%test_unit _ = test Current.one (* test for Int *)
-    let%test_unit _ = test Current.ten
-    let%test_unit _ = test Current.hundred
-    let%test_unit _ = test Current.thousand
-    let%test_unit _ = test Current.million
-    let%test_unit _ = test Current.billion
-    let%test_unit _ = test Current.trillion
+      (* This contains a test for all branches.*)
+      let%test_unit _ = test Current.zero (* test for Zero *)
+      let%test_unit _ = test Current.one (* test for Int *)
+      let%test_unit _ = test Current.ten
+      let%test_unit _ = test Current.hundred
+      let%test_unit _ = test Current.thousand
+      let%test_unit _ = test Current.million
+      let%test_unit _ = test Current.billion
+      let%test_unit _ = test Current.trillion
 
-    let ( / ) = Current.( / )
-    let ( * ) = Current.( * )
-    (* Test for all Over_10^i *)
-    let%test_unit _ = test (Current.one / Current.ten)
-    let%test_unit _ = test (Current.one / Current.hundred)
-    let%test_unit _ = test (Current.one / Current.thousand)
-    let%test_unit _ = test (Current.one / (Current.thousand * Current.ten))
-    let%test_unit _ = test (Current.one / (Current.thousand * Current.hundred))
-    let%test_unit _ = test (Current.one / Current.million)
-    let%test_unit _ = test (Current.one / (Current.million  * Current.ten))
-    let%test_unit _ = test (Current.one / (Current.million  * Current.hundred))
-    let%test_unit _ = test (Current.one / Current.billion)
-    let%test_unit _ = test (Current.one / (Current.billion  * Current.ten))
-    let%test_unit _ = test (Current.one / (Current.billion  * Current.hundred))
-    let%test_unit _ = test (Current.one / Current.trillion)
-    (* Test for Over_int *)
-    let%test_unit _ = test ((Current.of_int 2) / (Current.of_int 3))
-    (* Test for overflow  : 2^62 / 25 would be Over_100(2^64) and should overflow,
-       and fallback on Other(2^62, 25) *)
-    let%test_unit _ = test ((Current.mul_2exp Current.one 62) / (Current.of_int 25))
-    let%test_unit _ = test ((Current.mul_2exp (Current.of_int (-1)) 62) / (Current.of_int 25))
+      let ( / ) = Current.( / )
+      let ( * ) = Current.( * )
+      (* Test for all Over_10^i *)
+      let%test_unit _ = test (Current.one / Current.ten)
+      let%test_unit _ = test (Current.one / Current.hundred)
+      let%test_unit _ = test (Current.one / Current.thousand)
+      let%test_unit _ = test (Current.one / (Current.thousand * Current.ten))
+      let%test_unit _ = test (Current.one / (Current.thousand * Current.hundred))
+      let%test_unit _ = test (Current.one / Current.million)
+      let%test_unit _ = test (Current.one / (Current.million  * Current.ten))
+      let%test_unit _ = test (Current.one / (Current.million  * Current.hundred))
+      let%test_unit _ = test (Current.one / Current.billion)
+      let%test_unit _ = test (Current.one / (Current.billion  * Current.ten))
+      let%test_unit _ = test (Current.one / (Current.billion  * Current.hundred))
+      let%test_unit _ = test (Current.one / Current.trillion)
+      (* Test for Over_int *)
+      let%test_unit _ = test ((Current.of_int 2) / (Current.of_int 3))
+      (* Test for overflow  : 2^62 / 25 would be Over_100(2^64) and should overflow,
+         and fallback on Other(2^62, 25) *)
+      let%test_unit _ = test ((Current.mul_2exp Current.one 62) / (Current.of_int 25))
+      let%test_unit _ = test ((Current.mul_2exp (Current.of_int (-1)) 62) / (Current.of_int 25))
 
-    (* This test tests for overflow in the numerator *)
-    let%test_unit _ = test ((Current.mul_2exp Current.one  65) / (Current.of_int 25))
+      (* This test tests for overflow in the numerator *)
+      let%test_unit _ = test ((Current.mul_2exp Current.one  65) / (Current.of_int 25))
 
-    (* This test tests for overflow in the denominator *)
-    let%test_unit _ = test (Current.one /  (Current.mul_2exp Current.one  65))
+      (* This test tests for overflow in the denominator *)
+      let%test_unit _ = test (Current.one /  (Current.mul_2exp Current.one  65))
 
-    (* Test for division by zero cases *)
-    let%test_unit _ = test Current.nan
-    let%test_unit _ = test Current.infinity
-    let%test_unit _ = test Current.neg_infinity
+      (* Test for division by zero cases *)
+      let%test_unit _ = test Current.nan
+      let%test_unit _ = test Current.infinity
+      let%test_unit _ = test Current.neg_infinity
 
-    let numbers = [
-      "-100.00000000";
-      "100.00000000";
-      "0.00000000";
-      "-200.00000000";
-      "200.00000000";
-      "-300.00000000";
-      "300.00000000";
-      "-400.00000000";
-      "-1000.00000000";
-      "1000.00000000";
-      "-1.00000000";
-      "400.00000000";
-      "-500.00000000";
-      "1.00000000";
-      "500.00000000";
-      "-600.00000000";
-      "-2000.00000000";
-      "2.00000000";
-      "-2.00000000";
-      "600.00000000";
-      "0.20720000";
-      "-0.20227524";
-      "0.18800000";
-      "0.16550000";
-      "0.15950000";
-      "0.13000000";
-      "0.12950000";
-      "0.11950000";
-      "-0.07232871";
-      "0.05950000";
-      "-0.05424653";
-      "0.04600437";
-      "0.04600000";
-      "0.04050000";
-      "-0.03616435";
-      "0.03550391";
-      "0.03550000";
-      "0.02000000";
-      "0.01950000";
-      "0.01050000";
-      "-316673.67291835";
-      "217240000000.0";
-      "-217240000000.0";
-      "3423.123456789";
-      "-3423.1234567891";
-    ]
-    ;;
+      let numbers = [
+        "-100.00000000";
+        "100.00000000";
+        "0.00000000";
+        "-200.00000000";
+        "200.00000000";
+        "-300.00000000";
+        "300.00000000";
+        "-400.00000000";
+        "-1000.00000000";
+        "1000.00000000";
+        "-1.00000000";
+        "400.00000000";
+        "-500.00000000";
+        "1.00000000";
+        "500.00000000";
+        "-600.00000000";
+        "-2000.00000000";
+        "2.00000000";
+        "-2.00000000";
+        "600.00000000";
+        "0.20720000";
+        "-0.20227524";
+        "0.18800000";
+        "0.16550000";
+        "0.15950000";
+        "0.13000000";
+        "0.12950000";
+        "0.11950000";
+        "-0.07232871";
+        "0.05950000";
+        "-0.05424653";
+        "0.04600437";
+        "0.04600000";
+        "0.04050000";
+        "-0.03616435";
+        "0.03550391";
+        "0.03550000";
+        "0.02000000";
+        "0.01950000";
+        "0.01050000";
+        "-316673.67291835";
+        "217240000000.0";
+        "-217240000000.0";
+        "3423.123456789";
+        "-3423.1234567891";
+      ]
+      ;;
 
-    let%test_unit _ = List.iter numbers ~f:(fun s -> test (V1.of_string s))
-    ;;
-  end)
+      let%test_unit _ = List.iter numbers ~f:(fun s -> test (V1.of_string s))
+      ;;
+    end)
 end
 
 open! Core_kernel
@@ -829,11 +830,13 @@ let%test _ = ten ** 9 = billion
 let%test _ = ten ** 12 = trillion
 let%test _ = ten ** (-2) = of_string "0.01"
 let%test _ = one ** Int.min_value = one
-let%test _ = of_string "2" ** 1000 = of_string
-                                 ("107150860718626732094842504906000181056140481170553360744375038837035105112493612249"
-                                  ^"319837881569585812759467291755314682518714528569231404359845775746985748039345677748"
-                                  ^"242309854210746050623711418779541821530464749835819412673987675591655439460770629145"
-                                  ^"71196477686542167660429831652624386837205668069376")
+let%test _ =
+  of_string "2" ** 1000
+  = of_string
+      ("107150860718626732094842504906000181056140481170553360744375038837035105112493612249"
+       ^"319837881569585812759467291755314682518714528569231404359845775746985748039345677748"
+       ^"242309854210746050623711418779541821530464749835819412673987675591655439460770629145"
+       ^"71196477686542167660429831652624386837205668069376")
 
 let half = of_ints 1 2
 
@@ -897,119 +900,120 @@ let round_decimal ?dir ~digits t =
   else round ?dir ~to_multiple_of:(tenth ** digits) t
 ;;
 
-let%test_module "round" = (module struct
+let%test_module "round" =
+  (module struct
 
-  let x     = of_string "1.23456789"
-  let neg_x = neg x
-  ;;
+    let x     = of_string "1.23456789"
+    let neg_x = neg x
+    ;;
 
-  let%test _ = round                            x           = of_string "1"
-  let%test _ = round ~to_multiple_of:tenth      x           = of_string "1.2"
-  let%test _ = round ~to_multiple_of:hundredth  x           = of_string "1.23"
-  let%test _ = round ~to_multiple_of:thousandth x           = of_string "1.235"
-  let%test _ = round ~to_multiple_of:millionth  x           = of_string "1.234568"
-  let%test _ = round                            neg_x       = of_string "-1"
-  let%test _ = round ~to_multiple_of:tenth      neg_x       = of_string "-1.2"
-  let%test _ = round ~to_multiple_of:hundredth  neg_x       = of_string "-1.23"
-  let%test _ = round ~to_multiple_of:thousandth neg_x       = of_string "-1.235"
-  let%test _ = round ~to_multiple_of:millionth  neg_x       = of_string "-1.234568"
-  ;;
+    let%test _ = round                            x           = of_string "1"
+    let%test _ = round ~to_multiple_of:tenth      x           = of_string "1.2"
+    let%test _ = round ~to_multiple_of:hundredth  x           = of_string "1.23"
+    let%test _ = round ~to_multiple_of:thousandth x           = of_string "1.235"
+    let%test _ = round ~to_multiple_of:millionth  x           = of_string "1.234568"
+    let%test _ = round                            neg_x       = of_string "-1"
+    let%test _ = round ~to_multiple_of:tenth      neg_x       = of_string "-1.2"
+    let%test _ = round ~to_multiple_of:hundredth  neg_x       = of_string "-1.23"
+    let%test _ = round ~to_multiple_of:thousandth neg_x       = of_string "-1.235"
+    let%test _ = round ~to_multiple_of:millionth  neg_x       = of_string "-1.234568"
+    ;;
 
-  let%test _ = round_decimal ~dir:`Nearest ~digits:0 x      = of_string "1"
-  let%test _ = round_decimal ~dir:`Nearest ~digits:1 x      = of_string "1.2"
-  let%test _ = round_decimal ~dir:`Nearest ~digits:2 x      = of_string "1.23"
-  let%test _ = round_decimal ~dir:`Nearest ~digits:3 x      = of_string "1.235"
-  let%test _ = round_decimal ~dir:`Nearest ~digits:4 x      = of_string "1.2346"
-  let%test _ = round_decimal ~dir:`Nearest ~digits:0 neg_x  = of_string "-1"
-  let%test _ = round_decimal ~dir:`Nearest ~digits:1 neg_x  = of_string "-1.2"
-  let%test _ = round_decimal ~dir:`Nearest ~digits:2 neg_x  = of_string "-1.23"
-  let%test _ = round_decimal ~dir:`Nearest ~digits:3 neg_x  = of_string "-1.235"
-  let%test _ = round_decimal ~dir:`Nearest ~digits:4 neg_x  = of_string "-1.2346"
-  ;;
+    let%test _ = round_decimal ~dir:`Nearest ~digits:0 x      = of_string "1"
+    let%test _ = round_decimal ~dir:`Nearest ~digits:1 x      = of_string "1.2"
+    let%test _ = round_decimal ~dir:`Nearest ~digits:2 x      = of_string "1.23"
+    let%test _ = round_decimal ~dir:`Nearest ~digits:3 x      = of_string "1.235"
+    let%test _ = round_decimal ~dir:`Nearest ~digits:4 x      = of_string "1.2346"
+    let%test _ = round_decimal ~dir:`Nearest ~digits:0 neg_x  = of_string "-1"
+    let%test _ = round_decimal ~dir:`Nearest ~digits:1 neg_x  = of_string "-1.2"
+    let%test _ = round_decimal ~dir:`Nearest ~digits:2 neg_x  = of_string "-1.23"
+    let%test _ = round_decimal ~dir:`Nearest ~digits:3 neg_x  = of_string "-1.235"
+    let%test _ = round_decimal ~dir:`Nearest ~digits:4 neg_x  = of_string "-1.2346"
+    ;;
 
-  let%test _ = round_decimal ~dir:`Up ~digits:0 x      = of_string "2"
-  let%test _ = round_decimal ~dir:`Up ~digits:1 x      = of_string "1.3"
-  let%test _ = round_decimal ~dir:`Up ~digits:2 x      = of_string "1.24"
-  let%test _ = round_decimal ~dir:`Up ~digits:3 x      = of_string "1.235"
-  let%test _ = round_decimal ~dir:`Up ~digits:4 x      = of_string "1.2346"
-  let%test _ = round_decimal ~dir:`Up ~digits:0 neg_x  = of_string "-1"
-  let%test _ = round_decimal ~dir:`Up ~digits:1 neg_x  = of_string "-1.2"
-  let%test _ = round_decimal ~dir:`Up ~digits:2 neg_x  = of_string "-1.23"
-  let%test _ = round_decimal ~dir:`Up ~digits:3 neg_x  = of_string "-1.234"
-  let%test _ = round_decimal ~dir:`Up ~digits:4 neg_x  = of_string "-1.2345"
-  ;;
+    let%test _ = round_decimal ~dir:`Up ~digits:0 x      = of_string "2"
+    let%test _ = round_decimal ~dir:`Up ~digits:1 x      = of_string "1.3"
+    let%test _ = round_decimal ~dir:`Up ~digits:2 x      = of_string "1.24"
+    let%test _ = round_decimal ~dir:`Up ~digits:3 x      = of_string "1.235"
+    let%test _ = round_decimal ~dir:`Up ~digits:4 x      = of_string "1.2346"
+    let%test _ = round_decimal ~dir:`Up ~digits:0 neg_x  = of_string "-1"
+    let%test _ = round_decimal ~dir:`Up ~digits:1 neg_x  = of_string "-1.2"
+    let%test _ = round_decimal ~dir:`Up ~digits:2 neg_x  = of_string "-1.23"
+    let%test _ = round_decimal ~dir:`Up ~digits:3 neg_x  = of_string "-1.234"
+    let%test _ = round_decimal ~dir:`Up ~digits:4 neg_x  = of_string "-1.2345"
+    ;;
 
-  let%test _ = round_decimal ~dir:`Down ~digits:0 x      = of_string "1"
-  let%test _ = round_decimal ~dir:`Down ~digits:1 x      = of_string "1.2"
-  let%test _ = round_decimal ~dir:`Down ~digits:2 x      = of_string "1.23"
-  let%test _ = round_decimal ~dir:`Down ~digits:3 x      = of_string "1.234"
-  let%test _ = round_decimal ~dir:`Down ~digits:4 x      = of_string "1.2345"
-  let%test _ = round_decimal ~dir:`Down ~digits:0 neg_x  = of_string "-2"
-  let%test _ = round_decimal ~dir:`Down ~digits:1 neg_x  = of_string "-1.3"
-  let%test _ = round_decimal ~dir:`Down ~digits:2 neg_x  = of_string "-1.24"
-  let%test _ = round_decimal ~dir:`Down ~digits:3 neg_x  = of_string "-1.235"
-  let%test _ = round_decimal ~dir:`Down ~digits:4 neg_x  = of_string "-1.2346"
-  ;;
+    let%test _ = round_decimal ~dir:`Down ~digits:0 x      = of_string "1"
+    let%test _ = round_decimal ~dir:`Down ~digits:1 x      = of_string "1.2"
+    let%test _ = round_decimal ~dir:`Down ~digits:2 x      = of_string "1.23"
+    let%test _ = round_decimal ~dir:`Down ~digits:3 x      = of_string "1.234"
+    let%test _ = round_decimal ~dir:`Down ~digits:4 x      = of_string "1.2345"
+    let%test _ = round_decimal ~dir:`Down ~digits:0 neg_x  = of_string "-2"
+    let%test _ = round_decimal ~dir:`Down ~digits:1 neg_x  = of_string "-1.3"
+    let%test _ = round_decimal ~dir:`Down ~digits:2 neg_x  = of_string "-1.24"
+    let%test _ = round_decimal ~dir:`Down ~digits:3 neg_x  = of_string "-1.235"
+    let%test _ = round_decimal ~dir:`Down ~digits:4 neg_x  = of_string "-1.2346"
+    ;;
 
-  let%test _ = round_decimal ~dir:`Zero ~digits:0 x      = of_string "1"
-  let%test _ = round_decimal ~dir:`Zero ~digits:1 x      = of_string "1.2"
-  let%test _ = round_decimal ~dir:`Zero ~digits:2 x      = of_string "1.23"
-  let%test _ = round_decimal ~dir:`Zero ~digits:3 x      = of_string "1.234"
-  let%test _ = round_decimal ~dir:`Zero ~digits:4 x      = of_string "1.2345"
-  let%test _ = round_decimal ~dir:`Zero ~digits:0 neg_x  = of_string "-1"
-  let%test _ = round_decimal ~dir:`Zero ~digits:1 neg_x  = of_string "-1.2"
-  let%test _ = round_decimal ~dir:`Zero ~digits:2 neg_x  = of_string "-1.23"
-  let%test _ = round_decimal ~dir:`Zero ~digits:3 neg_x  = of_string "-1.234"
-  let%test _ = round_decimal ~dir:`Zero ~digits:4 neg_x  = of_string "-1.2345"
-  ;;
+    let%test _ = round_decimal ~dir:`Zero ~digits:0 x      = of_string "1"
+    let%test _ = round_decimal ~dir:`Zero ~digits:1 x      = of_string "1.2"
+    let%test _ = round_decimal ~dir:`Zero ~digits:2 x      = of_string "1.23"
+    let%test _ = round_decimal ~dir:`Zero ~digits:3 x      = of_string "1.234"
+    let%test _ = round_decimal ~dir:`Zero ~digits:4 x      = of_string "1.2345"
+    let%test _ = round_decimal ~dir:`Zero ~digits:0 neg_x  = of_string "-1"
+    let%test _ = round_decimal ~dir:`Zero ~digits:1 neg_x  = of_string "-1.2"
+    let%test _ = round_decimal ~dir:`Zero ~digits:2 neg_x  = of_string "-1.23"
+    let%test _ = round_decimal ~dir:`Zero ~digits:3 neg_x  = of_string "-1.234"
+    let%test _ = round_decimal ~dir:`Zero ~digits:4 neg_x  = of_string "-1.2345"
+    ;;
 
-  let%test _ = try ignore (round ~to_multiple_of:zero one : t); false with _ -> true
-  let%test _ = Option.is_none (iround ~to_multiple_of:0 one)
-  let%test _ = try ignore (iround_exn ~to_multiple_of:0 one : int); false with _ -> true
+    let%test _ = try ignore (round ~to_multiple_of:zero one : t); false with _ -> true
+    let%test _ = Option.is_none (iround ~to_multiple_of:0 one)
+    let%test _ = try ignore (iround_exn ~to_multiple_of:0 one : int); false with _ -> true
 
-  let dir_to_string = function
-    | `Up -> "up"
-    | `Down -> "down"
-    | `Nearest -> "nearest"
-    | `Zero -> "zero"
-  ;;
+    let dir_to_string = function
+      | `Up -> "up"
+      | `Down -> "down"
+      | `Nearest -> "nearest"
+      | `Zero -> "zero"
+    ;;
 
-  let as_float f =
-    List.iter [`Up; `Down; `Nearest; `Zero] ~f:(fun dir ->
-      [%test_result: float] ~message:(dir_to_string dir)
-        ~expect:(Float.round ~dir f)
-        (to_float (round ~dir (of_float_dyadic f))))
-  ;;
-
-  let%test_unit _ =
-    List.iter [0.; 0.5; 99.5; 99.99; 1_000.]
-      ~f:(fun f -> as_float f; as_float (Float.neg f))
-  ;;
-
-  let%test_module "iround" = (module struct
-    let as_int ~to_multiple_of i =
+    let as_float f =
       List.iter [`Up; `Down; `Nearest; `Zero] ~f:(fun dir ->
-        [%test_result: int] ~message:(dir_to_string dir)
-          ~expect:(Int.round ~dir ~to_multiple_of i)
-          (iround_exn ~dir ~to_multiple_of (of_int i)))
+        [%test_result: float] ~message:(dir_to_string dir)
+          ~expect:(Float.round ~dir f)
+          (to_float (round ~dir (of_float_dyadic f))))
+    ;;
 
     let%test_unit _ =
-      List.iter [1; 327; 1_000_012] ~f:(fun to_multiple_of ->
-        List.iter [0; 1; 3315; 98_765_432] ~f:(fun i ->
-          as_int ~to_multiple_of i;
-          as_int ~to_multiple_of (Int.neg i)))
+      List.iter [0.; 0.5; 99.5; 99.99; 1_000.]
+        ~f:(fun f -> as_float f; as_float (Float.neg f))
+    ;;
 
-    let%test_unit _ = as_int ~to_multiple_of:1 Int.max_value
-    let%test_unit _ = as_int ~to_multiple_of:1 Int.min_value
+    let%test_module "iround" = (module struct
+                                 let as_int ~to_multiple_of i =
+                                   List.iter [`Up; `Down; `Nearest; `Zero] ~f:(fun dir ->
+                                     [%test_result: int] ~message:(dir_to_string dir)
+                                       ~expect:(Int.round ~dir ~to_multiple_of i)
+                                       (iround_exn ~dir ~to_multiple_of (of_int i)))
 
-    let overflows t =
-      [%test_pred: int option] Option.is_none (iround t);
-      try ignore (iround_exn t : int); false with _ -> true
+                                 let%test_unit _ =
+                                   List.iter [1; 327; 1_000_012] ~f:(fun to_multiple_of ->
+                                     List.iter [0; 1; 3315; 98_765_432] ~f:(fun i ->
+                                       as_int ~to_multiple_of i;
+                                       as_int ~to_multiple_of (Int.neg i)))
 
-    let%test _ = overflows (of_int Int.max_value + one)
-    let%test _ = overflows (of_int Int.min_value - one)
+                                 let%test_unit _ = as_int ~to_multiple_of:1 Int.max_value
+                                 let%test_unit _ = as_int ~to_multiple_of:1 Int.min_value
+
+                                 let overflows t =
+                                   [%test_pred: int option] Option.is_none (iround t);
+                                   try ignore (iround_exn t : int); false with _ -> true
+
+                                 let%test _ = overflows (of_int Int.max_value + one)
+                                 let%test _ = overflows (of_int Int.min_value - one)
+                               end)
   end)
-end)
 
 include (Hashable.Make_binable (T) : Hashable.S_binable with type t := t)
 
@@ -1176,7 +1180,7 @@ let shrinker         = For_quickcheck.shrinker
 module For_utop : sig end = struct
   include Pretty_printer.Register (struct
       include T
-      let module_name = "Bignum.Std.Bignum"
+      let module_name = "Bignum"
       let to_string t = Sexp.to_string (sexp_of_t t)
     end)
 end
