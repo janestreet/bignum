@@ -81,16 +81,56 @@ val round_as_bigint_exn
   -> t -> Bigint.t
 
 (** Convenience wrapper around [round] to round to the specified number
-    of decimal digits. *)
+    of decimal digits.  This raises if the number is infinite or undefined. *)
 val round_decimal
   :  ?dir:[ `Down | `Up | `Nearest | `Zero ]
   -> digits:int
   -> t -> t
 
+val round_decimal_to_nearest_half_to_even : digits:int -> t -> t
+
 (** Decimal. Output is truncated (not rounded) to nine decimal places, so may be lossy.
     Consider using [sexp_of_t] if you need lossless stringification. *)
 val to_string  : t -> string
+
 val to_float   : t -> float
+
+(** Accurate if possible.  If this number is not representable as a finite decimal
+    fraction, it raises instead. *)
+val to_string_decimal_accurate_exn : t -> string
+
+(** As above, returns Or_error.t instead of raising *)
+val to_string_decimal_accurate : t -> string Or_error.t
+
+(** [true] if and only if [to_string_decimal_accurate_exn] doesn't raise. *)
+val is_representable_as_decimal : t -> bool
+
+(** Pretty print bignum in an approximate decimal form or print inf, -inf, nan.  For
+    example [to_string_hum ~delimiter:',' ~decimals:3 ~strip_zero:false 1234.1999 =
+    "1,234.200"].  No delimiters are inserted to the right of the decimal. *)
+val to_string_hum
+  :  ?delimiter:char  (** defaults to no delimiter *)
+  -> ?decimals:int    (** defaults to [9] *)
+  -> ?strip_zero:bool (** defaults to [true] *)
+  -> t
+  -> string
+
+(** Always accurate.  If the number is representable as a finite decimal, it will return
+    this decimal string.  If the denomiator is zero, it would return "nan", "inf" or
+    "-inf".  Finally, if the bignum is a rational non representable as a decimal,
+    [to_string_accurate t] returns an expression that evaluates to the right value.
+    Example: [to_string_accurate (Bignum.of_string "1/3") = "(0.333333333 +
+    1/3000000000)"].
+
+    Since the introduction of that function in the API, [of_string] is able to read any
+    value returned by this function, and would yield the original bignum.  That is:
+
+    {[
+      fun bignum -> bignum |> to_string_accurate |> of_string
+    ]}
+
+    is the identity in [Bignum]. *)
+val to_string_accurate : t -> string
 
 (** Transforming a [float] into a [Bignum.t] needs to be done with care.  Most rationals
     and decimals are not exactly representable as floats, thus their float representation
