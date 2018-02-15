@@ -36,6 +36,7 @@ val trillionth : t
 
 val ( + )    : t -> t -> t
 val ( - )    : t -> t -> t
+(** Note that division by zero will not raise, but will return inf, -inf, or nan. *)
 val ( / )    : t -> t -> t
 
 (** [m // n] is equivalent to [of_int m / of_int n].  Example: [Bigint.O.(2 // 3)]. *)
@@ -48,6 +49,7 @@ val ( * )    : t -> t -> t
 val ( ** )   : t -> int -> t
 val abs      : t -> t
 val neg      : t -> t
+(** Note that [inverse zero] is [infinity], not an error. *)
 val inverse  : t -> t
 val sum      : t list -> t
 
@@ -89,10 +91,6 @@ val round_decimal
 
 val round_decimal_to_nearest_half_to_even : digits:int -> t -> t
 
-(** Decimal. Output is truncated (not rounded) to nine decimal places, so may be lossy.
-    Consider using [sexp_of_t] if you need lossless stringification. *)
-val to_string  : t -> string
-
 val to_float   : t -> float
 
 (** Accurate if possible.  If this number is not representable as a finite decimal
@@ -104,6 +102,9 @@ val to_string_decimal_accurate : t -> string Or_error.t
 
 (** [true] if and only if [to_string_decimal_accurate_exn] doesn't raise. *)
 val is_representable_as_decimal : t -> bool
+
+(** [true] if and only if the number is finite and is not a Nan. *)
+val is_real : t -> bool
 
 (** Pretty print bignum in an approximate decimal form or print inf, -inf, nan.  For
     example [to_string_hum ~delimiter:',' ~decimals:3 ~strip_zero:false 1234.1999 =
@@ -193,7 +194,8 @@ val of_bigint : Bigint.t -> t
 val num_as_bigint : t -> Bigint.t
 val den_as_bigint : t -> Bigint.t
 
-val pp : Format.formatter -> t -> unit
+val pp_hum : Format.formatter -> t -> unit
+val pp_accurate : Format.formatter -> t -> unit
 
 (** [gen_finite] is like [gen] but excludes values with zero in the denominator. *)
 val gen_finite : t Quickcheck.Generator.t
@@ -259,3 +261,9 @@ module O : sig
   val of_float  : float -> t
   [@@deprecated "[since 2017-03]"]
 end
+
+val to_string  : t -> string
+[@@deprecated "[since 2018-02]: Use [to_string_hum] or another [to_string_*] function"]
+
+val pp : Format.formatter -> t -> unit
+[@@deprecated "[since 2018-02]: Use [pp_hum] or [pp_accurate]"]

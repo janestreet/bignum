@@ -72,7 +72,7 @@ let compare_floats ~of_float x =
     raise_s [%message "mismatch" (x : float) (x' : float)]
 ;;
 
-let%expect_test "roundrip: f |> Bignum.of_float_decimal |> Bignum.to_float" =
+let%expect_test "roundtrip: f |> Bignum.of_float_decimal |> Bignum.to_float" =
   require_does_not_raise [%here] (fun () ->
     Quickcheck.test ~sexp_of:[%sexp_of:float] Float.gen ~f:(fun x ->
       let skip_test_for_now =
@@ -98,7 +98,7 @@ let%expect_test "Be notified when [Zarith.Q.to_float] will be fixed" =
       (x' 7.561817966690623E-309)) |}];
 ;;
 
-let%expect_test "roundrip: f |> Bignum.of_float_dyadic |> Bignum.to_float" =
+let%expect_test "roundtrip: f |> Bignum.of_float_dyadic |> Bignum.to_float" =
   require_does_not_raise [%here] (fun () ->
     Quickcheck.test ~sexp_of:[%sexp_of:float] Float.gen ~f:(fun x ->
       compare_floats ~of_float:Bignum.of_float_dyadic x));

@@ -119,12 +119,6 @@ module Stable = struct
       | Equal   -> "nan"
     ;;
 
-    let to_string t =
-      if Z.equal t.den Z.zero
-      then to_string_when_den_is_zero ~num:t.num
-      else to_float_string ~max_decimal_digits:9 t
-    ;;
-
     module Of_string_internal : sig
       val of_string_internal: string -> t
     end = struct
@@ -309,18 +303,10 @@ module Stable = struct
           doesn't_parse_with of_string_internal && doesn't_parse_with Float.of_string))
     ;;
 
-    let%test _ = String.equal (to_string (of_string_internal "1.23456789")) "1.23456789"
-
-    let%test _ = String.equal (to_string (of_int 7 / of_int 9))     "0.777777777"
-    let%test _ = String.equal (to_string (of_int (-7) / of_int 9)) "-0.777777777"
     let%test _ =
       not (equal
              (of_float_dyadic 766.46249999999997726)
              (of_float_dyadic 766.462499999999864))
-
-    let%test _ = equal (of_string_internal (to_string nan))          nan
-    let%test _ = equal (of_string_internal (to_string infinity))     infinity
-    let%test _ = equal (of_string_internal (to_string neg_infinity)) neg_infinity
 
     let %test _ = equal (of_string_internal "+1/2") (of_string_internal ".5")
     let %test _ = equal (of_string_internal "-1/2") (of_string_internal "-.5")
@@ -933,11 +919,13 @@ let%test _ =
   t > low_bound && t < high_bound
 
 let sign x = if x < zero then -1 else if x > zero then 1 else 0
-let pp ppf t = Format.fprintf ppf "%s" (to_string t)
 
 let inverse t = div one t
 let%test _ = inverse one = one
 let%test _ = inverse (neg one) = (neg one)
+let%test _ = inverse ten = of_string ".1"
+let%test _ = inverse zero = infinity (* This is specifically claimed in the mli *)
+let%test _ = inverse infinity = zero
 let%test _ = inverse ten = of_string_internal ".1"
 
 (* Exponentiation by repeated squaring, to calculate t^n in O(log n) multiplications. *)
@@ -1075,6 +1063,9 @@ let to_string_hum ?delimiter ?(decimals=9) ?(strip_zero=true) t =
       then left
       else left ^ "." ^ right))
 ;;
+
+let pp_hum      ppf t = Format.fprintf ppf "%s" (to_string_hum t)
+let pp_accurate ppf t = Format.fprintf ppf "%s" (to_string_accurate t)
 
 let%test_module "round" =
   (module struct
@@ -1363,3 +1354,11 @@ module For_utop : sig end = struct
 end
 
 let of_float = of_float_dyadic
+
+let to_string t =
+  if Z.equal t.den Z.zero
+  then to_string_when_den_is_zero ~num:t.num
+  else to_float_string ~max_decimal_digits:9 t
+;;
+
+let pp ppf t = Format.fprintf ppf "%s" (to_string t)
