@@ -36,6 +36,7 @@ val trillionth : t
 
 val ( + )    : t -> t -> t
 val ( - )    : t -> t -> t
+
 (** Note that division by zero will not raise, but will return inf, -inf, or nan. *)
 val ( / )    : t -> t -> t
 
@@ -49,6 +50,7 @@ val ( * )    : t -> t -> t
 val ( ** )   : t -> int -> t
 val abs      : t -> t
 val neg      : t -> t
+
 (** Note that [inverse zero] is [infinity], not an error. *)
 val inverse  : t -> t
 val sum      : t list -> t
@@ -103,8 +105,11 @@ val to_string_decimal_accurate : t -> string Or_error.t
 (** [true] if and only if [to_string_decimal_accurate_exn] doesn't raise. *)
 val is_representable_as_decimal : t -> bool
 
-(** [true] if and only if the number is finite and is not a Nan. *)
+(** [true] if and only if the number is non-infinity and non-undefined. *)
 val is_real : t -> bool
+
+(** [true] if and only if the number is undefined. *)
+val is_nan : t -> bool
 
 (** Pretty print bignum in an approximate decimal form or print inf, -inf, nan.  For
     example [to_string_hum ~delimiter:',' ~decimals:3 ~strip_zero:false 1234.1999 =

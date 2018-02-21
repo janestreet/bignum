@@ -33,7 +33,7 @@ module Stable = struct
         end
 
     let of_float_dyadic = of_float
-    let of_float = [ `dont_use_it ]
+    let of_float = `dont_use_it
     let _ = of_float
 
     let hash (t : t) = Hashtbl.hash t
@@ -64,9 +64,9 @@ module Stable = struct
 
     let to_rational_string = to_string
     let of_rational_string = of_string
-    let to_string = [ `renamed_to_rational_string ]
+    let to_string = `renamed_to_rational_string
     let _ = to_string
-    let of_string = [ `renamed_of_rational_string ]
+    let of_string = `renamed_of_rational_string
     let _ = of_string
 
     let to_float_string ~max_decimal_digits:shift_len t =
@@ -356,6 +356,8 @@ module Stable = struct
       | Den_equals_zero | Rational_not_decimal -> false
       | Decimal { max_decimal_digits = _ } -> true
     ;;
+
+    let is_nan t = Z.equal t.den Z.zero && Z.equal t.num Z.zero
 
     let round_to_nearest_z_half_to_even t =
       let t = t + half in
