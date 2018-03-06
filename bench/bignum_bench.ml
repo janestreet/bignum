@@ -270,14 +270,14 @@ let%bench_module "Bignum binprot" =
   end)
 
 let%bench_module "round" = (module struct
-                             let%bench_fun "round_decimal" [@indexed digits = [0;3;6;9]] =
-fun () ->
-  List.iter numbers_decimal ~f:(fun number -> ignore (round_decimal number ~digits : t))
-;;
+  let%bench_fun "round_decimal" [@indexed digits = [0;3;6;9]] =
+    fun () ->
+      List.iter numbers_decimal ~f:(fun number -> ignore (round_decimal number ~digits : t))
+  ;;
 
-let%bench "round" =
-  List.iter numbers_decimal ~f:(fun number -> ignore (round number : t))
-;;
+  let%bench "round" =
+    List.iter numbers_decimal ~f:(fun number -> ignore (round number : t))
+  ;;
 end)
 
 let%expect_test "Monitor value changes to understand how this may affect benches" =

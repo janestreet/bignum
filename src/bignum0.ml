@@ -397,9 +397,8 @@ module Stable = struct
           | Rational_not_decimal ->
             let float_string = to_float_string ~max_decimal_digits:9 t in
             let of_float_string = of_string_internal float_string in
-            if equal of_float_string t
-            then Atom float_string
-            else List (float_string, "+", to_rational_string (sub t of_float_string))
+            List (float_string, "+", to_rational_string (sub t of_float_string))
+      ;;
     end
 
     let sexp_of_t t =
@@ -1293,13 +1292,14 @@ module For_quickcheck = struct
     let%bind decimal_size, fractional_size = split_weighted_in_favor_of_right_side size in
     let%bind decimal_divisor = exponential ~size:decimal_size in
     let fractional_divisor = of_int (Int.succ fractional_size) in
-    let divisor = fractional_divisor * decimal_divisor in
+    (* We have to divide the range into at least 2 parts (otherwise the only candidate
+       numbers are the bounds themselves). [fractional_divisor] and [decimal_divisor] can
+       both be 1, so we multiply by an arbitrary small number to guarantee that [divisor >
+       1]. *)
+    let divisor = fractional_divisor * decimal_divisor * ten in
     (* choose values in units of the chosen precision. *)
     let increment = gcd / divisor in
-    let count =
-      num_as_bigint ((upper_bound - lower_bound) / increment)
-      |> Bigint.max (Bigint.of_int 10)
-    in
+    let count = num_as_bigint ((upper_bound - lower_bound) / increment) in
     let%map index = Bigint.gen_uniform_incl Bigint.one (Bigint.pred count) in
     lower_bound + (of_bigint index * increment)
   ;;
@@ -1318,7 +1318,7 @@ module For_quickcheck = struct
     let%bind magnitude = exponential ~size:order_of_magnitude in
     let%bind hi = if%map Bool.gen then magnitude else one / magnitude in
     let      lo = neg hi in
-    Generator.with_size ~size:precision (gen_uniform_excl lo hi)
+    Generator.with_size ~size:precision (gen_incl lo hi)
   ;;
 
   let gen =

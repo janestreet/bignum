@@ -216,6 +216,8 @@ module T = struct
   let pow x y = Z.pow x (to_int_exn y)
   ;;
 
+  let ( ** ) x y = pow x y
+
   let popcount x = Z.popcount x
   ;;
 

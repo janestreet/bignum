@@ -286,3 +286,11 @@ let%test_module "Bignum.gen" =
         Float.( < ) float 0. && Float.( > ) float (-. Float.epsilon_float))
     ;;
   end)
+
+let%test_unit "Bignum.gen_uniform_excl" =
+  Quickcheck.test
+    (Bignum.gen_uniform_excl Bignum.zero Bignum.one)
+    ~sexp_of:Bignum.sexp_of_t
+    ~f:(fun bignum ->
+      assert (Bignum.between bignum ~low:Bignum.zero ~high:Bignum.one))
+;;
