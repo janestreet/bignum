@@ -1,6 +1,5 @@
 (library
  ((name bignum_test)
-(flags (:standard -safe-string))
   (libraries (
     core
     bignum

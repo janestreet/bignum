@@ -1,6 +1,5 @@
 (library
  ((name bigint_benchmarks)
-(flags (:standard -safe-string))
   (libraries (core bigint))
   (preprocess (pps (ppx_jane ppxlib.runner)))))
 

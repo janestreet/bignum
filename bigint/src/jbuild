@@ -2,7 +2,6 @@
   ((name bigint)
    ;; The name of the public_name is so that we don't create one additional package.
    (public_name bignum.bigint)
-  (flags (:standard -safe-string))
    (libraries
      (core_kernel
       typerep
