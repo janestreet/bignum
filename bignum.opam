@@ -18,7 +18,7 @@ depends: [
   "ppxlib"                  {>= "0.1.0"}
   "zarith"                  {>= "1.4"}
 ]
-available: [ ocaml-version >= "4.04.1" ]
+available: [ ocaml-version >= "4.06.1" ]
 descr: "
 Core-flavoured wrapper around zarith's arbitrary-precision rationals.
 "
