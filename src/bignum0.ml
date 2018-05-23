@@ -1331,7 +1331,7 @@ module For_quickcheck = struct
   ;;
 
   let obs =
-    Quickcheck.Observer.create (fun t ~size:_ hash ->
+    Quickcheck.Observer.create (fun t ~size:_ ~hash ->
       hash_fold_t hash t)
   ;;
 

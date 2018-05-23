@@ -360,7 +360,7 @@ end = struct
           (lower_bound : t)
           (upper_bound : t)]
     end;
-    Generator.create (fun ~size:_ state ->
+    Generator.create (fun ~size:_ ~random:state ->
       random_uniform ~state lower_bound upper_bound)
 
   let gen_incl lower_bound upper_bound =
@@ -416,7 +416,7 @@ end = struct
       ]
 
   let obs =
-    Quickcheck.Observer.create (fun t ~size:_ hash ->
+    Quickcheck.Observer.create (fun t ~size:_ ~hash ->
       hash_fold_t hash t)
 
   let shrinker =
