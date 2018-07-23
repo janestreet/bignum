@@ -921,6 +921,24 @@ let%test _ =
 
 let sign x = if x < zero then -1 else if x > zero then 1 else 0
 
+let sign_or_nan t : Sign_or_nan.t =
+  if is_nan t
+  then Nan
+  else if t > zero
+  then Pos
+  else if t < zero
+  then Neg
+  else Zero
+
+let sign_exn t : Sign.t =
+  match sign_or_nan t with
+  | Pos  -> Pos
+  | Neg  -> Neg
+  | Zero -> Zero
+  | Nan  ->
+    raise_s [%message "Bignum.sign_exn of NaN"
+                        ~_:(t : t)]
+
 let inverse t = div one t
 let%test _ = inverse one = one
 let%test _ = inverse (neg one) = (neg one)

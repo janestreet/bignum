@@ -184,7 +184,17 @@ val of_float : float -> t
 val to_int     : t -> int option
 val to_int_exn : t -> int
 val is_zero    : t -> bool
-val sign       : t -> int
+
+(** Do not use this function in new code. See [sign_exn] or [sign_or_nan] instead.
+
+    Returns -1, 0, or 1 according to the sign of the input. Due to an accidental
+    oversight, [sign nan] = -1. *)
+val sign : t -> int
+
+(** The sign of a Bignum.  Raises on nan. *)
+val sign_exn : t -> Sign.t
+
+val sign_or_nan : t -> Sign_or_nan.t
 
 val of_string : string -> t
 val of_int    : int -> t
