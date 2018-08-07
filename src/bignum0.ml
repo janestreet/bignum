@@ -1334,12 +1334,12 @@ module For_quickcheck = struct
     let%bind size = Generator.size in
     let%bind order_of_magnitude, precision = split_weighted_in_favor_of_right_side size in
     let%bind magnitude = exponential ~size:order_of_magnitude in
-    let%bind hi = if%map Bool.gen then magnitude else one / magnitude in
+    let%bind hi = if%map Bool.quickcheck_generator then magnitude else one / magnitude in
     let      lo = neg hi in
     Generator.with_size ~size:precision (gen_incl lo hi)
   ;;
 
-  let gen =
+  let quickcheck_generator =
     Generator.weighted_union
       [ 0.05, return infinity
       ; 0.05, return neg_infinity
@@ -1348,22 +1348,22 @@ module For_quickcheck = struct
       ]
   ;;
 
-  let obs =
+  let quickcheck_observer =
     Quickcheck.Observer.create (fun t ~size:_ ~hash ->
       hash_fold_t hash t)
   ;;
 
-  let shrinker =
+  let quickcheck_shrinker =
     Quickcheck.Shrinker.empty ()
   ;;
 end
 
-let obs              = For_quickcheck.obs
-let gen              = For_quickcheck.gen
+let quickcheck_observer              = For_quickcheck.quickcheck_observer
+let quickcheck_generator              = For_quickcheck.quickcheck_generator
 let gen_finite       = For_quickcheck.gen_finite
 let gen_incl         = For_quickcheck.gen_incl
 let gen_uniform_excl = For_quickcheck.gen_uniform_excl
-let shrinker         = For_quickcheck.shrinker
+let quickcheck_shrinker         = For_quickcheck.quickcheck_shrinker
 
 module For_utop : sig end = struct
   include Pretty_printer.Register (struct

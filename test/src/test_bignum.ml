@@ -13,7 +13,7 @@ let%test_unit "Bignum.(//)" =
 let%test_unit "Bignum.(//)" =
   let open Bignum.O in
   Quickcheck.test
-    (Quickcheck.Generator.tuple2 Int.gen Int.gen)
+    (Quickcheck.Generator.tuple2 Int.quickcheck_generator Int.quickcheck_generator)
     ~sexp_of:[%sexp_of: int * int]
     ~f:(fun (i, j) -> [%test_eq: Bignum.t] (i // j) (of_int i / of_int j))
 ;;
@@ -73,7 +73,7 @@ let compare_floats ~of_float x =
 
 let%expect_test "roundtrip: f |> Bignum.of_float_decimal |> Bignum.to_float" =
   require_does_not_raise [%here] (fun () ->
-    Quickcheck.test ~sexp_of:[%sexp_of:float] Float.gen ~f:(fun x ->
+    Quickcheck.test ~sexp_of:[%sexp_of:float] Float.quickcheck_generator ~f:(fun x ->
       let skip_test_for_now =
         match Float.classify x with
         | Subnormal -> true
@@ -99,14 +99,14 @@ let%expect_test "Be notified when [Zarith.Q.to_float] will be fixed" =
 
 let%expect_test "roundtrip: f |> Bignum.of_float_dyadic |> Bignum.to_float" =
   require_does_not_raise [%here] (fun () ->
-    Quickcheck.test ~sexp_of:[%sexp_of:float] Float.gen ~f:(fun x ->
+    Quickcheck.test ~sexp_of:[%sexp_of:float] Float.quickcheck_generator ~f:(fun x ->
       compare_floats ~of_float:Bignum.of_float_dyadic x));
   [%expect {| |}]
 ;;
 
 let%expect_test "to_string_accurate |> of_string" =
   require_does_not_raise [%here] (fun () ->
-    Quickcheck.test ~sexp_of:[%sexp_of:Bignum.t] Bignum.gen ~f:(fun x ->
+    Quickcheck.test ~sexp_of:[%sexp_of:Bignum.t] Bignum.quickcheck_generator ~f:(fun x ->
       [%test_result: Bignum.t] ~expect:x
         (x |> Bignum.to_string_accurate |> Bignum.of_string)));
   [%expect {| |}];
@@ -114,7 +114,7 @@ let%expect_test "to_string_accurate |> of_string" =
 
 let%expect_test "to_string_accurate matches sexp_of_t" =
   require_does_not_raise [%here] (fun () ->
-    Quickcheck.test ~sexp_of:[%sexp_of:Bignum.t] Bignum.gen ~f:(fun x ->
+    Quickcheck.test ~sexp_of:[%sexp_of:Bignum.t] Bignum.quickcheck_generator ~f:(fun x ->
       [%test_result: string] ~expect:(Bignum.to_string_accurate x)
         (x |> Bignum.sexp_of_t |> Sexp.to_string)));
   [%expect {| |}];
@@ -122,7 +122,7 @@ let%expect_test "to_string_accurate matches sexp_of_t" =
 
 let%expect_test "to_string_hum |> of_string" =
   require_does_not_raise [%here] (fun () ->
-    Quickcheck.test ~sexp_of:[%sexp_of:Bignum.t] Bignum.gen ~f:(fun x ->
+    Quickcheck.test ~sexp_of:[%sexp_of:Bignum.t] Bignum.quickcheck_generator ~f:(fun x ->
       let decimals = 9 in
       let dx  = Bignum.to_string_hum ~decimals x |> Bignum.of_string in
       let dx2 = Bignum.to_string_hum ~decimals ~delimiter:'_' x |> Bignum.of_string in
@@ -209,7 +209,7 @@ let%test_module "Bignum.gen" =
 
     let%test_unit _ =
       Quickcheck.test_distinct_values
-        Bignum.gen
+        Bignum.quickcheck_generator
         ~sexp_of
         ~compare
         ~trials:1_000
@@ -217,70 +217,70 @@ let%test_module "Bignum.gen" =
     ;;
 
     let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.gen ~f:(fun bignum ->
+      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
         Bignum.equal bignum Bignum.zero)
     ;;
 
     let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.gen ~f:(fun bignum ->
+      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
         Bignum.equal bignum Bignum.one)
     ;;
 
     let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.gen ~f:(fun bignum ->
+      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
         Bignum.equal bignum (Bignum.neg Bignum.one))
     ;;
 
     let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.gen ~f:(fun bignum ->
+      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
         Bignum.( > ) bignum Bignum.one
         && Option.is_some (Bignum.to_int bignum)
         && Bignum.equal bignum (Bignum.of_int (Bignum.to_int_exn bignum)))
     ;;
 
     let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.gen ~f:(fun bignum ->
+      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
         Bignum.( < ) bignum (Bignum.neg Bignum.one)
         && Option.is_some (Bignum.to_int bignum)
         && Bignum.equal bignum (Bignum.of_int (Bignum.to_int_exn bignum)))
     ;;
 
     let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.gen ~f:(fun bignum ->
+      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
         Bignum.( > ) bignum Bignum.zero
         && Bigint.equal (Bignum.den_as_bigint bignum) Bigint.one
         && Option.is_none (Bigint.to_int (Bignum.num_as_bigint bignum)))
     ;;
 
     let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.gen ~f:(fun bignum ->
+      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
         Bignum.( < ) bignum Bignum.zero
         && Bigint.equal (Bignum.den_as_bigint bignum) Bigint.one
         && Option.is_none (Bigint.to_int (Bignum.num_as_bigint bignum)))
     ;;
 
     let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.gen ~f:(fun bignum ->
+      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
         Bignum.( > ) bignum Bignum.zero
         && Option.is_none (Bigint.to_int (Bignum.num_as_bigint bignum))
         && Option.is_none (Bigint.to_int (Bignum.den_as_bigint bignum)))
     ;;
 
     let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.gen ~f:(fun bignum ->
+      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
         Bignum.( < ) bignum Bignum.zero
         && Option.is_none (Bigint.to_int (Bignum.num_as_bigint bignum))
         && Option.is_none (Bigint.to_int (Bignum.den_as_bigint bignum)))
     ;;
 
     let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.gen ~f:(fun bignum ->
+      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
         let float = Bignum.to_float bignum in
         Float.( > ) float 0. && Float.( < ) float Float.epsilon_float)
     ;;
 
     let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.gen ~f:(fun bignum ->
+      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
         let float = Bignum.to_float bignum in
         Float.( < ) float 0. && Float.( > ) float (-. Float.epsilon_float))
     ;;

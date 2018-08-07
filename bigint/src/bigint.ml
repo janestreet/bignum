@@ -407,18 +407,18 @@ end = struct
   let gen_negative =
     Generator.map gen_positive ~f:neg
 
-  let gen =
+  let quickcheck_generator =
     Generator.weighted_union
       [ 0.45, gen_positive
       ; 0.1,  Generator.return zero
       ; 0.45, gen_negative
       ]
 
-  let obs =
+  let quickcheck_observer =
     Quickcheck.Observer.create (fun t ~size:_ ~hash ->
       hash_fold_t hash t)
 
-  let shrinker =
+  let quickcheck_shrinker =
     Quickcheck.Shrinker.empty ()
 
 end
