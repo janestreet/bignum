@@ -658,7 +658,7 @@ module Stable = struct
               let n = Z.to_int num in (* Z.fits_int num *)
               let d = Z.to_int den in (* Z.fits_int den *)
               let ( = ) = Core_kernel.Int.( = ) in
-              let ( mod ) = Pervasives.( mod ) in
+              let ( mod ) = Caml.( mod ) in
               if d = 0 then Bin_rep.Other t
               else if d = 1 then Bin_rep.Int n
               else if 10_000 mod d = 0
