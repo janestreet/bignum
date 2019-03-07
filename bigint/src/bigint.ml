@@ -223,8 +223,8 @@ module T = struct
 end
 ;;
 
-module T_math = Base.Not_exposed_properly.Int_math.Make( T )
-module T_conversions = Base.Not_exposed_properly.Int_conversions.Make( T )
+module T_math = Int_math.Make( T )
+module T_conversions = Int_conversions.Make( T )
 module T_comparable_with_zero = Comparable.Validate_with_zero( T )
 module T_identifiable = Identifiable.Make( T )
 ;;
@@ -428,7 +428,7 @@ include For_quickcheck
 module Hex = struct
   type nonrec t = t [@@deriving bin_io, typerep]
 
-  module M = Base.Not_exposed_properly.Int_conversions.Make_hex(struct
+  module M = Base.Int_conversions.Make_hex(struct
 
       type nonrec t = t [@@deriving hash, compare]
       ;;
