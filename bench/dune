@@ -1,2 +1,2 @@
-(library (name bignum_benchmarks) (libraries core bignum)
+(library (name bignum_benchmarks) (libraries bignum core)
  (preprocess (pps ppx_jane)))
