@@ -12,6 +12,7 @@ include Sexpable       with type t := t
 include Comparable     with type t := t
 include Hashable       with type t := t
 include Binable        with type t := t
+include Equal.S        with type t := t
 
 (** [gen] produces values with an order of magnitude (roughly the number of digits) in the
     numerator and denominator proportional to [Quickcheck.Generator.size].  Also includes
