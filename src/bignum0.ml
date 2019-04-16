@@ -3,7 +3,6 @@ module Stable = struct
     module Z = Zarith.Z
 
     open Core_kernel
-    open Int.Replace_polymorphic_compare
 
     include Zarith.Q
 
@@ -617,7 +616,6 @@ module Stable = struct
 
     include Binable.Of_binable.V1 (Bin_rep) (struct
         open! Core_kernel
-        open! Int.Replace_polymorphic_compare
 
         type t = V1.t
 
@@ -882,7 +880,6 @@ module Stable = struct
 end
 
 open! Core_kernel
-open! Int.Replace_polymorphic_compare
 
 module T = Stable.Current
 include T
