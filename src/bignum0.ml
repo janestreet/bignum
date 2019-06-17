@@ -752,7 +752,7 @@ module Stable = struct
 
   let%test_module _ =
     (module struct
-      open Core_kernel
+      open! Core_kernel
 
       let buf = Bigstring.create 256
 
