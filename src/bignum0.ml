@@ -6,6 +6,8 @@ module Stable = struct
 
     include Zarith.Q
 
+    open (Int : Interfaces.Infix_comparators with type t := int)
+
     let z_ten = Z.of_int 10
 
     let pow_10_z =
@@ -535,7 +537,8 @@ module Stable = struct
           as_float ("-" ^ s))
     ;;
 
-    let%test _ = equal (t_of_sexp (sexp_of_t nan))          nan
+    let%test _ = compare    (t_of_sexp (sexp_of_t nan))     nan = 0
+    let%test _ = not (equal (t_of_sexp (sexp_of_t nan))     nan)
     let%test _ = equal (t_of_sexp (sexp_of_t infinity))     infinity
     let%test _ = equal (t_of_sexp (sexp_of_t neg_infinity)) neg_infinity
 
@@ -559,7 +562,8 @@ module Stable = struct
         let to_binable t = Zarith.Q.to_string t
         let of_binable s = Zarith.Q.of_string s
 
-        let%test _ = equal (of_binable (to_binable nan))          nan
+        let%test _ = compare    (of_binable (to_binable nan))     nan = 0
+        let%test _ = not (equal (of_binable (to_binable nan))     nan)
         let%test _ = equal (of_binable (to_binable infinity))     infinity
         let%test _ = equal (of_binable (to_binable neg_infinity)) neg_infinity
 
