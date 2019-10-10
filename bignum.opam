@@ -15,6 +15,7 @@ depends: [
   "ppx_jane"
   "splittable_random"
   "typerep"
+  "zarith_stubs_js"
   "dune"              {build & >= "1.5.1"}
   "num"
   "zarith"            {>= "1.5"}

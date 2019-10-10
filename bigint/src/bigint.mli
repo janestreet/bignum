@@ -7,20 +7,18 @@ type t
 
 (** [gen] produces integers representable within [Quickcheck.size] bytes, with a random
     sign. *)
-include Int_intf.S_unbounded with type t := t
+include
+  Int_intf.S_unbounded with type t := t
 
 val to_int64_exn : t -> Int64.t
-
-val to_int       : t -> int       option
-val to_int32     : t -> Int32.t   option
-val to_int64     : t -> Int64.t   option
+val to_int : t -> int option
+val to_int32 : t -> Int32.t option
+val to_int64 : t -> Int64.t option
 val to_nativeint : t -> nativeint option
-
-val of_int       : int       -> t
-val of_int32     : Int32.t   -> t
-val of_int64     : Int64.t   -> t
+val of_int : int -> t
+val of_int32 : Int32.t -> t
+val of_int64 : Int64.t -> t
 val of_nativeint : nativeint -> t
-
 val to_zarith_bigint : t -> Zarith.Z.t
 val of_zarith_bigint : Zarith.Z.t -> t
 
