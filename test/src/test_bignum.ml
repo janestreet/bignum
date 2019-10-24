@@ -383,9 +383,9 @@ let%test _ = equal (of_string_internal "-.00000000") zero
 let%test _ = equal (of_string_internal "-0.") zero
 let%test _ = equal (of_string_internal "+0.") zero
 
-let%expect_test "to_float_string" =
+let%expect_test "to_string_decimal_truncate" =
   let test t =
-    t |> of_string |> to_float_string ~max_decimal_digits:9 |> print_endline
+    t |> of_string |> to_string_decimal_truncate ~max_decimal_digits:9 |> print_endline
   in
   test "1/3";
   [%expect "0.333333333"]
@@ -401,6 +401,8 @@ let%expect_test "Monitor chosen cases that have exhibited regressions at some po
   [%expect {| 1024 |}];
   test "1/3";
   [%expect {| (0.333333333 + 1/3000000000) |}];
+  test "-1/3";
+  [%expect {| (-0.333333333 + -1/3000000000) |}];
   (* A decimal not representable as a float. *)
   test "3.14";
   [%expect {| 3.14 |}];
@@ -430,6 +432,8 @@ let%expect_test "Monitor chosen cases that have exhibited regressions at some po
   (* Decimals that should be displayed as such. *)
   test "(694943.472 + 7/100000000000)";
   [%expect {| 694943.47200000007 |}];
+  test "(-694943.472 + -7/100000000000)";
+  [%expect {| -694943.47200000007 |}];
   test "694943.47200000007";
   [%expect {| 694943.47200000007 |}];
   test "1894603.2000000002";
@@ -450,6 +454,8 @@ let%expect_test _ =
   [%expect {| (Ok 17.45) |}];
   test (of_int 1 / of_int 3);
   [%expect {| (Error ("Not representable as decimal" (0.333333333 + 1/3000000000))) |}];
+  test (of_int (-1) / of_int 3);
+  [%expect {| (Error ("Not representable as decimal" (-0.333333333 + -1/3000000000))) |}];
   test (of_int 1 / of_int 7);
   [%expect {| (Error ("Not representable as decimal" (0.142857142 + 3/3500000000))) |}];
   test (of_int 1 / of_int 15);

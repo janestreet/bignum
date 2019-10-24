@@ -12,7 +12,6 @@ include
 
 include Comparable with type t := t
 include Hashable with type t := t
-include Binable with type t := t
 include Equal.S with type t := t
 
 (** [gen] produces values with an order of magnitude (roughly the number of digits) in the
@@ -240,7 +239,7 @@ module Stable : sig
       val of_binable : target -> t
     end
 
-    type nonrec t = t [@@deriving sexp, bin_io, compare, hash]
+    type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp]
   end
 
   module V2 : sig
@@ -253,8 +252,12 @@ module Stable : sig
       val of_binable : target -> t
     end
 
-    type nonrec t = t [@@deriving sexp, bin_io, compare, hash]
+    type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp]
   end
+end
+
+module Unstable : sig
+  type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp]
 end
 
 module O : sig
@@ -303,8 +306,29 @@ val pp : Format.formatter -> t -> unit
 module For_testing : sig
   val of_string_internal : string -> t
   val of_float_dyadic : float -> t
-  val to_float_string : max_decimal_digits:int -> t -> string
+  val to_string_decimal_truncate : max_decimal_digits:int -> t -> string
   val of_int64 : Int64.t -> t
   val of_zarith_bignum : Zarith.Q.t -> t
   val to_zarith_bignum : t -> Zarith.Q.t
 end
+
+val bin_size_t : t Bin_prot.Size.sizer
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+
+val bin_write_t : t Bin_prot.Write.writer
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+
+val bin_read_t : t Bin_prot.Read.reader
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+
+val __bin_read_t__ : (int -> t) Bin_prot.Read.reader
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+
+val bin_writer_t : t Bin_prot.Type_class.writer
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+
+val bin_reader_t : t Bin_prot.Type_class.reader
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+
+val bin_t : t Bin_prot.Type_class.t
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]

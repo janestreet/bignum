@@ -4,90 +4,95 @@ module Z = Zarith.Z
 
 type t = Z.t [@@deriving typerep ~abstract]
 
+let module_name = "Bigint"
+
+module Stringable_t = struct
+  type nonrec t = t
+
+  let to_string = Z.to_string
+
+  let rec is_integer_suffix s i ~len ~char_is_digit =
+    if i < len
+    then (
+      let c = s.[i] in
+      if char_is_digit c || Char.equal c '_'
+      then is_integer_suffix s (i + 1) ~len ~char_is_digit
+      else false)
+    else true
+  ;;
+
+  let is_integer_string s ~char_is_digit =
+    let len = String.length s in
+    if 0 < len
+    then (
+      let i = if Char.equal s.[0] '-' then 1 else 0 in
+      if i < len
+      then
+        if char_is_digit s.[i]
+        then is_integer_suffix s (i + 1) ~len ~char_is_digit
+        else false
+      else false)
+    else false
+  ;;
+
+  let of_string_base str ~name ~of_string_no_underscores ~char_is_digit =
+    try of_string_no_underscores str with
+    | _ ->
+      if is_integer_string str ~char_is_digit
+      then of_string_no_underscores (String.filter str ~f:(fun c -> c <> '_'))
+      else failwithf "%s.%s: invalid argument %S" name module_name str ()
+  ;;
+
+  let of_string str =
+    of_string_base
+      str
+      ~name:"of_string"
+      ~of_string_no_underscores:Z.of_string
+      ~char_is_digit:Char.is_digit
+  ;;
+end
+
 module Stable = struct
   module V1 = struct
-    module T0 = struct
+    module Bin_rep = struct
+      type t =
+        | Zero
+        | Pos of string
+        | Neg of string
+      [@@deriving bin_io]
+    end
+
+    module Bin_rep_conversion = struct
       type nonrec t = t
-
-      let module_name = "Bigint"
-      let to_string = Z.to_string
-
-      let rec is_integer_suffix s i ~len ~char_is_digit =
-        if i < len
-        then (
-          let c = s.[i] in
-          if char_is_digit c || Char.equal c '_'
-          then is_integer_suffix s (i + 1) ~len ~char_is_digit
-          else false)
-        else true
-      ;;
-
-      let is_integer_string s ~char_is_digit =
-        let len = String.length s in
-        if 0 < len
-        then (
-          let i = if Char.equal s.[0] '-' then 1 else 0 in
-          if i < len
-          then
-            if char_is_digit s.[i]
-            then is_integer_suffix s (i + 1) ~len ~char_is_digit
-            else false
-          else false)
-        else false
-      ;;
-
-      let of_string_base str ~name ~of_string_no_underscores ~char_is_digit =
-        try of_string_no_underscores str with
-        | _ ->
-          if is_integer_string str ~char_is_digit
-          then of_string_no_underscores (String.filter str ~f:(fun c -> c <> '_'))
-          else failwithf "%s.%s: invalid argument %S" name module_name str ()
-      ;;
-
-      let of_string str =
-        of_string_base
-          str
-          ~name:"of_string"
-          ~of_string_no_underscores:Z.of_string
-          ~char_is_digit:Char.is_digit
-      ;;
-
-      let compare = Z.compare
-
-      module Binable = struct
-        type t =
-          | Zero
-          | Pos of string
-          | Neg of string
-        [@@deriving bin_io]
-      end
 
       let to_binable t =
         let s = Z.sign t in
         if s > 0
-        then Binable.Pos (Z.to_bits t)
+        then Bin_rep.Pos (Z.to_bits t)
         else if s < 0
-        then Binable.Neg (Z.to_bits t)
-        else Binable.Zero
+        then Bin_rep.Neg (Z.to_bits t)
+        else Bin_rep.Zero
       ;;
 
       let of_binable = function
-        | Binable.Zero -> Z.zero
-        | Binable.Pos bits -> Z.of_bits bits
-        | Binable.Neg bits -> Z.of_bits bits |> Z.neg
+        | Bin_rep.Zero -> Z.zero
+        | Bin_rep.Pos bits -> Z.of_bits bits
+        | Bin_rep.Neg bits -> Z.of_bits bits |> Z.neg
       ;;
     end
 
-    include Sexpable.Stable.Of_stringable.V1 (T0)
-    include Binable.Stable.Of_binable.V1 (T0.Binable) (T0)
-    include T0
-  end
+    type nonrec t = t
 
-  module Current = V1
+    let compare = Z.compare
+
+    include Sexpable.Stable.Of_stringable.V1 (Stringable_t)
+    include Binable.Stable.Of_binable.V1 (Bin_rep) (Bin_rep_conversion)
+  end
 end
 
-module T = struct
-  include Stable.Current
+module Unstable = struct
+  include Stable.V1
+  include Stringable_t
 
   let of_zarith_bigint t = t
   let to_zarith_bigint t = t
@@ -180,10 +185,15 @@ module T = struct
   let popcount x = Z.popcount x
 end
 
-module T_math = Int_math.Make (T)
-module T_conversions = Int_conversions.Make (T)
-module T_comparable_with_zero = Comparable.Validate_with_zero (T)
-module T_identifiable = Identifiable.Make (T)
+module T_math = Int_math.Make (Unstable)
+module T_conversions = Int_conversions.Make (Unstable)
+module T_comparable_with_zero = Comparable.Validate_with_zero (Unstable)
+
+module T_identifiable = Identifiable.Make (struct
+    let module_name = module_name
+
+    include Unstable
+  end)
 
 (* Including in opposite order to shadow functorized bindings with direct bindings. *)
 module O = struct
@@ -191,7 +201,7 @@ module O = struct
   include T_comparable_with_zero
   include T_conversions
   include T_math
-  include T
+  include Unstable
 end
 
 include (O : module type of O with type t := t)
