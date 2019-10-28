@@ -36,6 +36,10 @@ module Stable : sig
   module V1 : sig
     type nonrec t = t [@@deriving bin_io, compare, sexp]
   end
+
+  module V2 : sig
+    type nonrec t = t [@@deriving bin_io, compare, sexp]
+  end
 end
 
 module Unstable : sig

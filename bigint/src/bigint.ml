@@ -88,6 +88,96 @@ module Stable = struct
     include Sexpable.Stable.Of_stringable.V1 (Stringable_t)
     include Binable.Stable.Of_binable.V1 (Bin_rep) (Bin_rep_conversion)
   end
+
+  module V2 = struct
+    type nonrec t = t
+
+    let compare = Z.compare
+
+    include Sexpable.Stable.Of_stringable.V1 (Stringable_t)
+
+    let compute_size_in_bytes x =
+      let numbits = Z.numbits x in
+      Int.round_up ~to_multiple_of:8 numbits / 8
+    ;;
+
+    let compute_tag ~size_in_bytes ~negative =
+      let open Int63 in
+      let sign_bit = if negative then one else zero in
+      (* Can't overflow:
+         size <= String.length bits < 2 * max_string_length < max_int63
+      *)
+      shift_left (of_int size_in_bytes) 1 + sign_bit
+    ;;
+
+    let bin_size_t : t Bin_prot.Size.sizer =
+      fun x ->
+        let size_in_bytes = compute_size_in_bytes x in
+        if size_in_bytes = 0
+        then Int63.bin_size_t Int63.zero
+        else (
+          let negative = Z.sign x = -1 in
+          let tag = compute_tag ~size_in_bytes ~negative in
+          Int63.bin_size_t tag + size_in_bytes)
+    ;;
+
+    let bin_write_t : t Bin_prot.Write.writer =
+      fun buf ~pos x ->
+        let size_in_bytes = compute_size_in_bytes x in
+        if size_in_bytes = 0
+        then Int63.bin_write_t buf ~pos Int63.zero
+        else (
+          let bits = Z.to_bits x in
+          let negative = Z.sign x = -1 in
+          let tag = compute_tag ~size_in_bytes ~negative in
+          let pos = Int63.bin_write_t buf ~pos tag in
+          Bin_prot.Common.blit_string_buf bits ~dst_pos:pos buf ~len:size_in_bytes;
+          pos + size_in_bytes)
+    ;;
+
+    let bin_read_t : t Bin_prot.Read.reader =
+      fun buf ~pos_ref ->
+        let tag = Core_kernel.Int63.bin_read_t buf ~pos_ref in
+        if Int63.equal tag Int63.zero
+        then Z.zero
+        else (
+          let negative = Int63.(tag land one = one) in
+          let size_in_bytes = Int63.(to_int_exn (shift_right tag 1)) in
+          (* Even though we could cache a buffer for small sizes, the extra logic leads to
+             a decrease in performance *)
+          let bytes = Bytes.create size_in_bytes in
+          Bin_prot.Common.blit_buf_bytes ~src_pos:!pos_ref buf bytes ~len:size_in_bytes;
+          let abs =
+            Z.of_bits (Bytes.unsafe_to_string ~no_mutation_while_string_reachable:bytes)
+          in
+          pos_ref := !pos_ref + size_in_bytes;
+          if negative then Z.neg abs else abs)
+    ;;
+
+    let module_name = "Bigint.Stable.V2.t"
+
+    let bin_writer_t : t Bin_prot.Type_class.writer =
+      { size = bin_size_t; write = bin_write_t }
+    ;;
+
+    let __bin_read_t__ _buf ~pos_ref _vint =
+      Bin_prot.Common.raise_variant_wrong_type module_name !pos_ref
+    ;;
+
+    let bin_reader_t : t Bin_prot.Type_class.reader =
+      { read = bin_read_t; vtag_read = __bin_read_t__ }
+    ;;
+
+    let bin_shape_t : Bin_prot.Shape.t =
+      Bin_prot.Shape.basetype
+        (Bin_prot.Shape.Uuid.of_string "7a8cceb2-f3a2-11e9-b7cb-aae95a547ff6")
+        []
+    ;;
+
+    let bin_t : t Bin_prot.Type_class.t =
+      { shape = bin_shape_t; writer = bin_writer_t; reader = bin_reader_t }
+    ;;
+  end
 end
 
 module Unstable = struct
