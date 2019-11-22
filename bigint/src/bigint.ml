@@ -5,6 +5,7 @@ module Z = Zarith.Z
 type t = Z.t [@@deriving typerep ~abstract]
 
 let module_name = "Bigint"
+let invariant (_ : t) = ()
 
 module Stringable_t = struct
   type nonrec t = t

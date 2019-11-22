@@ -376,7 +376,7 @@ module Stable = struct
        read function that avoids the unnecessary allocation of the
        intermediate type. To do so the two types below must be kept in
        sync (including order of constructors) -- this is enforced by a
-       unit test below. *)
+       unit test in test_bignum.ml. *)
     module Tag = struct
       type t =
         | Zero
@@ -510,7 +510,7 @@ module Stable = struct
       ;;
 
       let of_binable =
-        let open Zarith.Q in
+        let open Q in
         function
         | Bin_rep.Zero -> zero
         | Bin_rep.Int i -> of_bigint (z_of_int63 i)
@@ -576,13 +576,238 @@ module Stable = struct
     let bin_reader_t = { bin_reader_t with Bin_prot.Type_class.read = bin_read_t }
   end
 
-  (* Note V1 and V2 are the same type in ocaml.  The only thing
+  module V3 = struct
+    (* The V3 serialization is heavily based on V2.
+
+       The V3 serialized representation makes use of special case to
+       achieve better compression AND less overhead when serialising /
+       deserialising.
+
+       It is written to go via an intermediate type.  However to gain
+       additional speed during deserialisation, we provide a handexpanded
+       read function that avoids the unnecessary allocation of the
+       intermediate type. To do so the two types below must be kept in
+       sync (including order of constructors) -- this is enforced by a
+       unit test in test_bignum.ml. *)
+    module Tag = struct
+      type t = V2.Tag.t =
+        | Zero
+        | Int
+        | Over_10
+        | Over_100
+        | Over_1_000
+        | Over_10_000
+        | Over_100_000
+        | Over_1_000_000
+        | Over_10_000_000
+        | Over_100_000_000
+        | Over_int
+        | Other
+      [@@deriving bin_io, variants]
+    end
+
+    module Bin_rep = struct
+      type t =
+        | Zero
+        | Int of Int63.V1.t
+        | Over_10 of Int63.V1.t
+        | Over_100 of Int63.V1.t
+        | Over_1_000 of Int63.V1.t
+        | Over_10_000 of Int63.V1.t
+        | Over_100_000 of Int63.V1.t
+        | Over_1_000_000 of Int63.V1.t
+        | Over_10_000_000 of Int63.V1.t
+        | Over_100_000_000 of Int63.V1.t
+        | Over_int of Int63.V1.t * Int63.V1.t
+        | Other of
+            { num : Bigint.Stable.V2.t
+            ; den : Bigint.Stable.V2.t
+            }
+      [@@deriving bin_io, variants]
+    end
+
+    module Bin_rep_conversion = struct
+      open! Core_kernel
+
+      type t = Q.t
+      type target = Bin_rep.t
+
+      let equal = Q.equal
+
+      let z_of_int63 =
+        match Sys.word_size with
+        | 64 -> fun x -> Z.of_int (Core_kernel.Int63.to_int_exn x)
+        | 32 -> fun x -> Z.of_int64 (Core_kernel.Int63.to_int64 x)
+        | _ -> assert false
+      ;;
+
+      let int63_of_z =
+        match Sys.word_size with
+        | 64 -> fun x -> Core_kernel.Int63.of_int (Z.to_int x)
+        | 32 -> fun x -> Core_kernel.Int63.of_int64_exn (Z.to_int64 x)
+        | _ -> assert false
+      ;;
+
+      (* For testing *)
+      let tag_variants = Tag.Variants.descriptions
+      let bin_rep_variants = Bin_rep.Variants.descriptions
+
+      (* To prevent a silent overflow that would result in a wrong result,
+         we only optimise after having checked that the numerator will still fit in an int
+         after having been multiplied by (i / d).*)
+      (* pre condition: i > 0, d > 0 and d divides i *)
+      let check_overflow f ~n ~d i =
+        (* Let p = i / d. p is an integer (cf pre condition). We have i = p.d.
+           n <= Max / i * d = Max / p.d * d
+           ->   n * p <= Max / p.d * d.p, by multiplying by p on both sides.
+           ->   n * p <= Max, because (Max / pd) * pd = pd q,
+           where Max = pd q + r, with 0 <= r < pd
+           So if n is positive, n <= Max / i * d, implies n * (i / d) <= Max.
+           If n is negative, n >= - Max / i * d , implies -n <= Max / i * d
+           which implies -n * p <= Max, see above.
+           -n * p <= Max implies n * p >= -Max > Min.
+        *)
+        let max_n = Int63.(max_value / i * d) in
+        if Int63.(n > max_n || n < -max_n)
+        then Bin_rep.Over_int (n, d)
+        else f Int63.O.(n * (i / d))
+      ;;
+
+      let int63_min_value = z_of_int63 Int63.min_value
+      let int63_max_value = z_of_int63 Int63.max_value
+      let fits_int63 x = Z.leq int63_min_value x && Z.leq x int63_max_value
+
+      let to_binable t =
+        if equal t Q.zero
+        then Bin_rep.Zero
+        else (
+          let num = t.num in
+          let den = t.den in
+          if not (fits_int63 num && fits_int63 den)
+          then
+            Bin_rep.Other
+              { num = Bigint.of_zarith_bigint num; den = Bigint.of_zarith_bigint den }
+          else (
+            (* Both num and den fits in an int each *)
+            let n = int63_of_z num in
+            (* fits_int63 num *)
+            let d = int63_of_z den in
+            (* fits_int63 den *)
+            let ( = ) = Core_kernel.Int63.( = ) in
+            let ( mod ) =
+              (* We only use [mod] below for positive arguments, so [Int63.rem] is
+                 equivalent to [Int63.(%)] for these purposes. We prefer [rem] because it
+                 is based on a builtin, and should be faster. *)
+              Core_kernel.Int63.rem
+            in
+            if d = Int63.zero
+            then
+              Bin_rep.Other
+                { num = Bigint.of_zarith_bigint num; den = Bigint.of_zarith_bigint den }
+            else if d = Int63.one
+            then Bin_rep.Int n
+            else if Int63.of_int 10_000 mod d = Int63.zero
+            then
+              if Int63.of_int 100 mod d = Int63.zero
+              then
+                if Int63.of_int 10 mod d = Int63.zero
+                then check_overflow Bin_rep.over_10 ~n ~d (Int63.of_int 10)
+                else check_overflow Bin_rep.over_100 ~n ~d (Int63.of_int 100)
+              else if Int63.of_int 1_000 mod d = Int63.zero
+              then check_overflow Bin_rep.over_1_000 ~n ~d (Int63.of_int 1_000)
+              else check_overflow Bin_rep.over_10_000 ~n ~d (Int63.of_int 10_000)
+            else if Int63.of_int 100_000_000 mod d = Int63.zero
+            then
+              if Int63.of_int 1_000_000 mod d = Int63.zero
+              then
+                if Int63.of_int 100_000 mod d = Int63.zero
+                then check_overflow Bin_rep.over_100_000 ~n ~d (Int63.of_int 100_000)
+                else check_overflow Bin_rep.over_1_000_000 ~n ~d (Int63.of_int 1_000_000)
+              else if Int63.of_int 10_000_000 mod d = Int63.zero
+              then check_overflow Bin_rep.over_10_000_000 ~n ~d (Int63.of_int 10_000_000)
+              else
+                check_overflow Bin_rep.over_100_000_000 ~n ~d (Int63.of_int 100_000_000)
+            else Bin_rep.Over_int (n, d)))
+      ;;
+
+      let of_binable =
+        let open Q in
+        function
+        | Bin_rep.Zero -> zero
+        | Bin_rep.Int i -> of_bigint (z_of_int63 i)
+        | Bin_rep.Over_int (n, d) -> make (z_of_int63 n) (z_of_int63 d)
+        | Bin_rep.Over_10 n -> make (z_of_int63 n) (Z.of_int 10)
+        | Bin_rep.Over_100 n -> make (z_of_int63 n) (Z.of_int 100)
+        | Bin_rep.Over_1_000 n -> make (z_of_int63 n) (Z.of_int 1_000)
+        | Bin_rep.Over_10_000 n -> make (z_of_int63 n) (Z.of_int 10_000)
+        | Bin_rep.Over_100_000 n -> make (z_of_int63 n) (Z.of_int 100_000)
+        | Bin_rep.Over_1_000_000 n -> make (z_of_int63 n) (Z.of_int 1_000_000)
+        | Bin_rep.Over_10_000_000 n -> make (z_of_int63 n) (Z.of_int 10_000_000)
+        | Bin_rep.Over_100_000_000 n -> make (z_of_int63 n) (Z.of_int 100_000_000)
+        | Bin_rep.Other { num; den } ->
+          make (Bigint.to_zarith_bigint num) (Bigint.to_zarith_bigint den)
+      ;;
+    end
+
+    type t = Q.t [@@deriving compare, equal, hash]
+
+    include Binable.Of_binable.V1 (Bin_rep) (Bin_rep_conversion)
+    module For_testing = Bin_rep_conversion
+
+    let t_of_sexp = V1.t_of_sexp
+    let sexp_of_t = V1.sexp_of_t
+
+    let bin_read_t buf ~pos_ref =
+      let bin_read_z_as_int63 buf ~pos_ref =
+        Bin_rep_conversion.z_of_int63 (Core_kernel.Int63.bin_read_t buf ~pos_ref)
+      in
+      match Tag.bin_read_t buf ~pos_ref with
+      | Tag.Zero -> Q.zero
+      | Tag.Int -> Q.of_bigint (bin_read_z_as_int63 buf ~pos_ref)
+      | Tag.Over_int ->
+        let n = bin_read_z_as_int63 buf ~pos_ref in
+        let d = bin_read_z_as_int63 buf ~pos_ref in
+        Q.make n d
+      | Tag.Over_10 ->
+        let n = bin_read_z_as_int63 buf ~pos_ref in
+        Q.make n (Z.of_int 10)
+      | Tag.Over_100 ->
+        let n = bin_read_z_as_int63 buf ~pos_ref in
+        Q.make n (Z.of_int 100)
+      | Tag.Over_1_000 ->
+        let n = bin_read_z_as_int63 buf ~pos_ref in
+        Q.make n (Z.of_int 1_000)
+      | Tag.Over_10_000 ->
+        let n = bin_read_z_as_int63 buf ~pos_ref in
+        Q.make n (Z.of_int 10_000)
+      | Tag.Over_100_000 ->
+        let n = bin_read_z_as_int63 buf ~pos_ref in
+        Q.make n (Z.of_int 100_000)
+      | Tag.Over_1_000_000 ->
+        let n = bin_read_z_as_int63 buf ~pos_ref in
+        Q.make n (Z.of_int 1_000_000)
+      | Tag.Over_10_000_000 ->
+        let n = bin_read_z_as_int63 buf ~pos_ref in
+        Q.make n (Z.of_int 10_000_000)
+      | Tag.Over_100_000_000 ->
+        let n = bin_read_z_as_int63 buf ~pos_ref in
+        Q.make n (Z.of_int 100_000_000)
+      | Tag.Other ->
+        let num = Bigint.Stable.V2.bin_read_t buf ~pos_ref in
+        let den = Bigint.Stable.V2.bin_read_t buf ~pos_ref in
+        Q.make (Bigint.to_zarith_bigint num) (Bigint.to_zarith_bigint den)
+    ;;
+
+    let bin_reader_t = { bin_reader_t with Bin_prot.Type_class.read = bin_read_t }
+  end
+
+  (* Note V1, V2 and V3 are the same type in ocaml.  The only thing
      that changes is the binprot representation.  This is safe (imho)
      as people declaring a stable type will have to explicitely referred
-     to V1 or V2.  At a later point we can hide that V1 is equal to
-     the regular type and thereby force people to switch to V2 or explicity
-     call a of/to v1 function (which would be the identity) *)
-  module Current = V2
+     to V1, V2 or V3.  At a later point we can hide that V1 or V2 is equal to
+     the regular type and thereby force people to switch to V3 or explicity
+     call a of/to v1/v2 function (which would be the identity) *)
+  module Current = V3
 end
 
 open! Core_kernel
@@ -609,16 +834,16 @@ let round_to_nearest_z_half_to_even t =
     if Z.is_even num then num else Z.pred num)
   else (
     (* Since t is not a natural number, t' <> t.  Thus, t < 0 => t' > t. *)
-    let t' = Zarith.Q.to_bigint t in
+    let t' = Q.to_bigint t in
     if Int.equal (Z.sign t.num) (-1) then Z.pred t' else t')
 ;;
 
 let round_decimal_to_nearest_half_to_even ~digits t =
   let shift_left = Z.pow_10 digits in
-  let shifted = t * Zarith.Q.of_bigint shift_left in
+  let shifted = t * Q.of_bigint shift_left in
   if Z.equal Z.one shifted.den
   then t
-  else Zarith.Q.make (round_to_nearest_z_half_to_even shifted) shift_left
+  else Q.make (round_to_nearest_z_half_to_even shifted) shift_left
 ;;
 
 let to_string_accurate t =

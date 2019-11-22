@@ -254,6 +254,19 @@ module Stable : sig
 
     type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp]
   end
+
+  module V3 : sig
+    module For_testing : sig
+      type target
+
+      val tag_variants : (string * int) list
+      val bin_rep_variants : (string * int) list
+      val to_binable : t -> target
+      val of_binable : target -> t
+    end
+
+    type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp]
+  end
 end
 
 module Unstable : sig
