@@ -362,7 +362,7 @@ module Stable = struct
       | Sexp.List _ -> of_sexp_error {|expected Atom or List [float; "+"; remainder]|} s
     ;;
 
-    include Binable.Of_binable.V1 (String.V1) (Bin_rep_conversion)
+    include Binable.Of_binable.V1 [@alert "-legacy"] (String.V1) (Bin_rep_conversion)
     module For_testing = Bin_rep_conversion
   end
 
@@ -529,7 +529,7 @@ module Stable = struct
 
     type t = Q.t [@@deriving compare, equal, hash]
 
-    include Binable.Of_binable.V1 (Bin_rep) (Bin_rep_conversion)
+    include Binable.Of_binable.V1 [@alert "-legacy"] (Bin_rep) (Bin_rep_conversion)
     module For_testing = Bin_rep_conversion
 
     let t_of_sexp = V1.t_of_sexp
@@ -751,7 +751,7 @@ module Stable = struct
 
     type t = Q.t [@@deriving compare, equal, hash]
 
-    include Binable.Of_binable.V1 (Bin_rep) (Bin_rep_conversion)
+    include Binable.Of_binable.V1 [@alert "-legacy"] (Bin_rep) (Bin_rep_conversion)
     module For_testing = Bin_rep_conversion
 
     let t_of_sexp = V1.t_of_sexp

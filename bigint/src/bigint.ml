@@ -87,7 +87,10 @@ module Stable = struct
     let compare = Z.compare
 
     include Sexpable.Stable.Of_stringable.V1 (Stringable_t)
-    include Binable.Stable.Of_binable.V1 (Bin_rep) (Bin_rep_conversion)
+
+    include Binable.Stable.Of_binable.V1 [@alert "-legacy"]
+        (Bin_rep)
+        (Bin_rep_conversion)
   end
 
   module V2 = struct
