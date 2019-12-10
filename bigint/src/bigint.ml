@@ -188,6 +188,7 @@ module Unstable = struct
   include Stable.V1
   include Stringable_t
 
+  let t_sexp_grammar = [%sexp_grammar: String.t]
   let of_zarith_bigint t = t
   let to_zarith_bigint t = t
 
