@@ -1,5 +1,4 @@
 open Core_kernel
-open Poly
 module Z = Zarith.Z
 
 type t = Z.t [@@deriving typerep ~abstract]
@@ -40,7 +39,7 @@ module Stringable_t = struct
     try of_string_no_underscores str with
     | _ ->
       if is_integer_string str ~char_is_digit
-      then of_string_no_underscores (String.filter str ~f:(fun c -> c <> '_'))
+      then of_string_no_underscores (String.filter str ~f:(fun c -> Char.( <> ) c '_'))
       else failwithf "%s.%s: invalid argument %S" name module_name str ()
   ;;
 
