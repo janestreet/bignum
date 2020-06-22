@@ -281,7 +281,7 @@ end
 
 module T_math = Int_math.Make (Unstable)
 module T_conversions = Int_conversions.Make (Unstable)
-module T_comparable_with_zero = Comparable.Validate_with_zero (Unstable)
+module T_comparable_with_zero = Comparable.With_zero (Unstable)
 
 module T_identifiable = Identifiable.Make (struct
     let module_name = module_name
