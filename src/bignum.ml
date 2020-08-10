@@ -94,9 +94,7 @@ module Q = struct
         let dec_pad =
           if len >= shift_len then "" else String.make (shift_len - len) '0'
         in
-        let dec_part =
-          dec_pad ^ String.sub s ~pos:int_len ~len:(end_pos - int_len + 1)
-        in
+        let dec_part = dec_pad ^ String.sub s ~pos:int_len ~len:(end_pos - int_len + 1) in
         int_part, dec_part
     in
     match neg, int_part, dec_part with
@@ -942,8 +940,7 @@ let round ?dir ?to_multiple_of t =
   match to_multiple_of with
   | None -> round_integer ?dir t
   | Some to_multiple_of ->
-    if is_zero to_multiple_of
-    then failwith "Bignum.round: to_multiple_of may not be zero";
+    if is_zero to_multiple_of then failwith "Bignum.round: to_multiple_of may not be zero";
     to_multiple_of * round_integer ?dir (t / to_multiple_of)
 ;;
 
@@ -1108,9 +1105,7 @@ module For_quickcheck = struct
     let%bind size = Generator.size in
     (* Pick a precision beyond just [gcd], based on [size].  We want to add some digits of
        precision, and also a potentially non-decimal factor. *)
-    let%bind decimal_size, fractional_size =
-      split_weighted_in_favor_of_right_side size
-    in
+    let%bind decimal_size, fractional_size = split_weighted_in_favor_of_right_side size in
     let%bind decimal_divisor = exponential ~size:decimal_size in
     let fractional_divisor = of_int (Int.succ fractional_size) in
     (* We have to divide the range into at least 2 parts (otherwise the only candidate
@@ -1135,9 +1130,7 @@ module For_quickcheck = struct
 
   let gen_finite =
     let%bind size = Generator.size in
-    let%bind order_of_magnitude, precision =
-      split_weighted_in_favor_of_right_side size
-    in
+    let%bind order_of_magnitude, precision = split_weighted_in_favor_of_right_side size in
     let%bind magnitude = exponential ~size:order_of_magnitude in
     let%bind hi = if%map Bool.quickcheck_generator then magnitude else one / magnitude in
     let lo = neg hi in

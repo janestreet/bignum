@@ -7,8 +7,7 @@ type t
 
 (** [gen] produces integers representable within [Quickcheck.size] bytes, with a random
     sign. *)
-include
-  Int_intf.S_unbounded with type t := t
+include Int_intf.S_unbounded with type t := t
 
 val to_int64_exn : t -> Int64.t
 val to_int : t -> int option

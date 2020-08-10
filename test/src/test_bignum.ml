@@ -73,8 +73,7 @@ let%expect_test "roundtrip: f |> Bignum.of_float_decimal |> Bignum.to_float" =
         | Subnormal -> true
         | Infinite | Nan | Normal | Zero -> false
       in
-      if not skip_test_for_now
-      then compare_floats ~of_float:Bignum.of_float_decimal x));
+      if not skip_test_for_now then compare_floats ~of_float:Bignum.of_float_decimal x));
   [%expect {| |}]
 ;;
 
@@ -130,9 +129,7 @@ let%expect_test "to_string_hum |> of_string" =
       ~f:(fun x ->
         let decimals = 9 in
         let dx = Bignum.to_string_hum ~decimals x |> Bignum.of_string in
-        let dx2 =
-          Bignum.to_string_hum ~decimals ~delimiter:'_' x |> Bignum.of_string
-        in
+        let dx2 = Bignum.to_string_hum ~decimals ~delimiter:'_' x |> Bignum.of_string in
         [%test_eq: Bignum.t] dx dx2;
         let expect =
           if Bignum.is_zero (Bignum.den x)
@@ -472,9 +469,7 @@ let%expect_test _ =
    [sexp_of_t]. *)
 let%test_unit "of_string matches Float.of_string" =
   let as_float s =
-    [%test_result: t]
-      ~expect:(of_float_dyadic (Float.of_string s))
-      (of_string_internal s)
+    [%test_result: t] ~expect:(of_float_dyadic (Float.of_string s)) (of_string_internal s)
   in
   List.iter
     (* All representable exactly as floats *)
@@ -835,8 +830,7 @@ let%test_module _ =
         ; ( "10000000000000"
           , [ "\011\01410000000000000"; "\001\252\000\160\114\078\024\009\000\000" ] )
         ; ( "-10000000000000"
-          , [ "\011\015\04510000000000000"; "\001\252\000\096\141\177\231\246\255\255" ]
-          )
+          , [ "\011\015\04510000000000000"; "\001\252\000\096\141\177\231\246\255\255" ] )
         ; ( "1099511627775"
           , [ "\011\0131099511627775"; "\001\252\255\255\255\255\255\000\000\000" ] )
         ]

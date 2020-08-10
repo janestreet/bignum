@@ -7,8 +7,7 @@ type t [@@deriving hash]
     where [x] is decimal and [y] and [z] are integers.  So for example, 1/3 <->
     (0.333333333 + 1/3000000000).  In string and sexp conversions, values with denominator
     of zero are special-cased: 0/0 <-> "nan", 1/0 <-> "inf", and -1/0 <-> "-inf". *)
-include
-  Sexpable with type t := t
+include Sexpable with type t := t
 
 include Comparable with type t := t
 include Hashable with type t := t
@@ -17,8 +16,7 @@ include Equal.S with type t := t
 (** [gen] produces values with an order of magnitude (roughly the number of digits) in the
     numerator and denominator proportional to [Quickcheck.Generator.size].  Also includes
     values with zero in the denominator. *)
-include
-  Quickcheckable with type t := t
+include Quickcheckable with type t := t
 
 val zero : t
 val one : t
