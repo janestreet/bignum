@@ -68,26 +68,17 @@ let compare_floats ~of_float x =
 let%expect_test "roundtrip: f |> Bignum.of_float_decimal |> Bignum.to_float" =
   require_does_not_raise [%here] (fun () ->
     Quickcheck.test ~sexp_of:[%sexp_of: float] Float.quickcheck_generator ~f:(fun x ->
-      let skip_test_for_now =
-        match Float.classify x with
-        | Subnormal -> true
-        | Infinite | Nan | Normal | Zero -> false
-      in
-      if not skip_test_for_now then compare_floats ~of_float:Bignum.of_float_decimal x));
+      compare_floats ~of_float:Bignum.of_float_decimal x));
   [%expect {| |}]
 ;;
 
-let%expect_test "Be notified when [Zarith.Q.to_float] will be fixed" =
-  require_does_raise [%here] (fun () ->
+let%expect_test "Subnormals are handled correctly by [Zarith.Q.to_float]" =
+  require_does_not_raise [%here] (fun () ->
     let x = 7.56181796669062E-309 in
     let x' = x |> Bignum.of_float_decimal |> Bignum.to_float in
     if not (Float.( = ) x x')
     then raise_s [%message "mismatch" (x : float) (x' : float)]);
-  [%expect
-    {|
-    (mismatch
-      (x  7.56181796669062E-309)
-      (x' 7.561817966690623E-309)) |}]
+  [%expect {| |}]
 ;;
 
 let%expect_test "roundtrip: f |> Bignum.of_float_dyadic |> Bignum.to_float" =
