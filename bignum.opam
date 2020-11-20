@@ -18,7 +18,7 @@ depends: [
   "zarith_stubs_js"
   "dune"              {>= "2.0.0"}
   "num"
-  "zarith"            {>= "1.5"}
+  "zarith"            {>= "1.11"}
 ]
 synopsis: "Core-flavoured wrapper around zarith's arbitrary-precision rationals"
 description: "

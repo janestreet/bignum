@@ -11,45 +11,12 @@ module Stringable_t = struct
 
   let to_string = Z.to_string
 
-  let rec is_integer_suffix s i ~len ~char_is_digit =
-    if i < len
-    then (
-      let c = s.[i] in
-      if char_is_digit c || Char.equal c '_'
-      then is_integer_suffix s (i + 1) ~len ~char_is_digit
-      else false)
-    else true
+  let of_string_base str ~name ~of_string =
+    try of_string str with
+    | _ -> failwithf "%s.%s: invalid argument %S" name module_name str ()
   ;;
 
-  let is_integer_string s ~char_is_digit =
-    let len = String.length s in
-    if 0 < len
-    then (
-      let i = if Char.equal s.[0] '-' then 1 else 0 in
-      if i < len
-      then
-        if char_is_digit s.[i]
-        then is_integer_suffix s (i + 1) ~len ~char_is_digit
-        else false
-      else false)
-    else false
-  ;;
-
-  let of_string_base str ~name ~of_string_no_underscores ~char_is_digit =
-    try of_string_no_underscores str with
-    | _ ->
-      if is_integer_string str ~char_is_digit
-      then of_string_no_underscores (String.filter str ~f:(fun c -> Char.( <> ) c '_'))
-      else failwithf "%s.%s: invalid argument %S" name module_name str ()
-  ;;
-
-  let of_string str =
-    of_string_base
-      str
-      ~name:"of_string"
-      ~of_string_no_underscores:Z.of_string
-      ~char_is_digit:Char.is_digit
-  ;;
+  let of_string str = of_string_base str ~name:"of_string" ~of_string:Z.of_string
 end
 
 module Stable = struct
@@ -468,22 +435,8 @@ module Hex = struct
       type nonrec t = t [@@deriving hash, compare]
 
       let to_string i = Z.format "%x" i
-
-      let char_is_hex_digit = function
-        | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true
-        | _ -> false
-      ;;
-
-      let of_hex_string_no_underscores str = Z.of_string_base 16 str
-
-      let of_string str =
-        of_string_base
-          str
-          ~name:"Hex.of_string"
-          ~char_is_digit:char_is_hex_digit
-          ~of_string_no_underscores:of_hex_string_no_underscores
-      ;;
-
+      let of_hex_string str = Z.of_string_base 16 str
+      let of_string str = of_string_base str ~name:"Hex.of_string" ~of_string:of_hex_string
       let ( < ) = ( < )
       let neg = neg
       let zero = zero
