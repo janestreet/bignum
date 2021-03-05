@@ -151,7 +151,7 @@ module Unstable = struct
   include Stable.V1
   include Stringable_t
 
-  let (t_sexp_grammar : t Sexplib0.Private.Raw_grammar.t) = { untyped = Integer }
+  let (t_sexp_grammar : t Sexplib.Sexp_grammar.t) = { untyped = Integer }
   let of_zarith_bigint t = t
   let to_zarith_bigint t = t
 
