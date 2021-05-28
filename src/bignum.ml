@@ -633,14 +633,14 @@ module Stable = struct
       let equal = Q.equal
 
       let z_of_int63 =
-        match Sys.word_size with
+        match Sys.word_size_in_bits with
         | 64 -> fun x -> Z.of_int (Core_kernel.Int63.to_int_exn x)
         | 32 -> fun x -> Z.of_int64 (Core_kernel.Int63.to_int64 x)
         | _ -> assert false
       ;;
 
       let int63_of_z =
-        match Sys.word_size with
+        match Sys.word_size_in_bits with
         | 64 -> fun x -> Core_kernel.Int63.of_int (Z.to_int x)
         | 32 -> fun x -> Core_kernel.Int63.of_int64_exn (Z.to_int64 x)
         | _ -> assert false
