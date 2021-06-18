@@ -1,5 +1,5 @@
 (** Arbitrary-precision rational numbers. *)
-open! Core_kernel
+open! Core
 
 type t [@@deriving hash]
 
@@ -286,7 +286,7 @@ module O : sig
   val abs : t -> t
   val neg : t -> t
 
-  include Core_kernel.Comparisons.Infix with type t := t
+  include Core.Comparisons.Infix with type t := t
 
   val zero : t
   val one : t

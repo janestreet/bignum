@@ -1,5 +1,5 @@
 module Z = struct
-  open Core_kernel
+  open Core
   include Zarith.Z
 
   let z_ten = of_int 10
@@ -29,7 +29,7 @@ module Z = struct
 end
 
 module Q = struct
-  open Core_kernel
+  open Core
   include Zarith.Q
   open (Int : Interfaces.Infix_comparators with type t := int)
 
@@ -327,8 +327,8 @@ module Q = struct
 end
 
 module Stable = struct
-  open! Core_kernel.Core_kernel_stable
-  open! Core_kernel.Int.Replace_polymorphic_compare
+  open! Core.Core_stable
+  open! Core.Int.Replace_polymorphic_compare
 
   module V1 = struct
     module Bin_rep_conversion = struct
@@ -342,7 +342,7 @@ module Stable = struct
     type t = Q.t [@@deriving compare, equal, hash]
 
     let sexp_of_t t =
-      let open Core_kernel in
+      let open Core in
       match Q.Serialized_parts.create t with
       | Atom atom -> Sexp.Atom atom
       | List (a, b, c) -> Sexp.List [ Atom a; Atom b; Atom c ]
@@ -350,7 +350,7 @@ module Stable = struct
     ;;
 
     let t_of_sexp s =
-      let open Core_kernel in
+      let open Core in
       match s with
       | Sexp.Atom s -> Q.of_string_internal s
       | Sexp.List [ Sexp.Atom float_part; Sexp.Atom "+"; Sexp.Atom rational_part ] ->
@@ -421,13 +421,13 @@ module Stable = struct
 
     let z_of_int63 =
       match Sys.word_size with
-      | 64 -> fun x -> Z.of_int (Core_kernel.Int63.to_int_exn x)
-      | 32 -> fun x -> Z.of_int64 (Core_kernel.Int63.to_int64 x)
+      | 64 -> fun x -> Z.of_int (Core.Int63.to_int_exn x)
+      | 32 -> fun x -> Z.of_int64 (Core.Int63.to_int64 x)
       | _ -> assert false
     ;;
 
     module Bin_rep_conversion = struct
-      open! Core_kernel
+      open! Core
 
       type t = Q.t
       type target = Bin_rep.t
@@ -478,7 +478,7 @@ module Stable = struct
             (* Z.fits_int num *)
             let d = Z.to_int den in
             (* Z.fits_int den *)
-            let ( = ) = Core_kernel.Int.( = ) in
+            let ( = ) = Core.Int.( = ) in
             let ( mod ) = Caml.( mod ) in
             if d = 0
             then Bin_rep.Other t
@@ -535,7 +535,7 @@ module Stable = struct
 
     let bin_read_t buf ~pos_ref =
       let bin_read_z_as_int63 buf ~pos_ref =
-        z_of_int63 (Core_kernel.Int63.bin_read_t buf ~pos_ref)
+        z_of_int63 (Core.Int63.bin_read_t buf ~pos_ref)
       in
       match Tag.bin_read_t buf ~pos_ref with
       | Tag.Zero -> Q.zero
@@ -625,7 +625,7 @@ module Stable = struct
     end
 
     module Bin_rep_conversion = struct
-      open! Core_kernel
+      open! Core
 
       type t = Q.t
       type target = Bin_rep.t
@@ -634,15 +634,15 @@ module Stable = struct
 
       let z_of_int63 =
         match Sys.word_size_in_bits with
-        | 64 -> fun x -> Z.of_int (Core_kernel.Int63.to_int_exn x)
-        | 32 -> fun x -> Z.of_int64 (Core_kernel.Int63.to_int64 x)
+        | 64 -> fun x -> Z.of_int (Core.Int63.to_int_exn x)
+        | 32 -> fun x -> Z.of_int64 (Core.Int63.to_int64 x)
         | _ -> assert false
       ;;
 
       let int63_of_z =
         match Sys.word_size_in_bits with
-        | 64 -> fun x -> Core_kernel.Int63.of_int (Z.to_int x)
-        | 32 -> fun x -> Core_kernel.Int63.of_int64_exn (Z.to_int64 x)
+        | 64 -> fun x -> Core.Int63.of_int (Z.to_int x)
+        | 32 -> fun x -> Core.Int63.of_int64_exn (Z.to_int64 x)
         | _ -> assert false
       ;;
 
@@ -691,12 +691,12 @@ module Stable = struct
             (* fits_int63 num *)
             let d = int63_of_z den in
             (* fits_int63 den *)
-            let ( = ) = Core_kernel.Int63.( = ) in
+            let ( = ) = Core.Int63.( = ) in
             let ( mod ) =
               (* We only use [mod] below for positive arguments, so [Int63.rem] is
                  equivalent to [Int63.(%)] for these purposes. We prefer [rem] because it
                  is based on a builtin, and should be faster. *)
-              Core_kernel.Int63.rem
+              Core.Int63.rem
             in
             if d = Int63.zero
             then
@@ -757,7 +757,7 @@ module Stable = struct
 
     let bin_read_t buf ~pos_ref =
       let bin_read_z_as_int63 buf ~pos_ref =
-        Bin_rep_conversion.z_of_int63 (Core_kernel.Int63.bin_read_t buf ~pos_ref)
+        Bin_rep_conversion.z_of_int63 (Core.Int63.bin_read_t buf ~pos_ref)
       in
       match Tag.bin_read_t buf ~pos_ref with
       | Tag.Zero -> Q.zero
@@ -808,7 +808,7 @@ module Stable = struct
   module Current = V3
 end
 
-open! Core_kernel
+open! Core
 module Unstable = Stable.Current
 include Q
 include Comparable.Make_binable (Unstable)
@@ -1027,7 +1027,7 @@ module O = struct
   let ( * ) = ( * )
   let ( ** ) = ( ** )
 
-  include (Replace_polymorphic_compare : Core_kernel.Comparisons.Infix with type t := t)
+  include (Replace_polymorphic_compare : Core.Comparisons.Infix with type t := t)
 
   let abs = abs
   let neg = neg

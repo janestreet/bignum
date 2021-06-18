@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open! Expect_test_helpers_core
 open Bignum
 open Bignum.For_testing
@@ -540,7 +540,7 @@ let%test_module _ =
 
 let%test_module _ =
   (module struct
-    open! Core_kernel
+    open! Core
     module Current = Bignum
     open Stable
     open Extra_constants
@@ -559,7 +559,7 @@ let%test_module _ =
     ;;
 
     let test b =
-      let open Core_kernel in
+      let open Core in
       let v1 = Bin_prot.Writer.to_string V1.bin_writer_t b |> String.length in
       let v2 = Bin_prot.Writer.to_string V2.bin_writer_t b |> String.length in
       (* change to true if you want to see compaction rates during testing *)

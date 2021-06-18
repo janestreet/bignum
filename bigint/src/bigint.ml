@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 module Z = Zarith.Z
 
 type t = Z.t [@@deriving typerep ~abstract]
@@ -104,7 +104,7 @@ module Stable = struct
 
     let bin_read_t : t Bin_prot.Read.reader =
       fun buf ~pos_ref ->
-        let tag = Core_kernel.Int63.bin_read_t buf ~pos_ref in
+        let tag = Core.Int63.bin_read_t buf ~pos_ref in
         if Int63.equal tag Int63.zero
         then Z.zero
         else (
