@@ -131,7 +131,7 @@ let%expect_test "to_string_hum |> of_string" =
   [%expect {| |}]
 ;;
 
-let%expect_test ("Float.to_string_hum matches Bignum.to_string_hum"[@tags "no-js"]) =
+let%expect_test ("Float.to_string_hum matches Bignum.to_string_hum" [@tags "no-js"]) =
   require_does_not_raise [%here] (fun () ->
     let delimiter = '_'
     and decimals = 7 in
@@ -154,14 +154,14 @@ let%expect_test ("Float.to_string_hum matches Bignum.to_string_hum"[@tags "no-js
    printing. This difference is the reason the test above was disabled in JavaScript.
 *)
 
-let%expect_test ("Float.to_string_hum big exponents (no-js)"[@tags "no-js"]) =
+let%expect_test ("Float.to_string_hum big exponents (no-js)" [@tags "no-js"]) =
   let x = -3.3810849992682576E+37 in
   print_s
     [%sexp (Float.to_string_hum ~delimiter:'_' ~decimals:7 ~strip_zero:false x : string)];
   [%expect {| -33_810_849_992_682_574_344_623_022_087_906_263_040.0000000 |}]
 ;;
 
-let%expect_test ("Float.to_string_hum big exponents (js-only)"[@tags "js-only"]) =
+let%expect_test ("Float.to_string_hum big exponents (js-only)" [@tags "js-only"]) =
   let x = -3.3810849992682576E+37 in
   print_s
     [%sexp (Float.to_string_hum ~delimiter:'_' ~decimals:7 ~strip_zero:false x : string)];
@@ -215,14 +215,14 @@ let%expect_test "to_string_hum" =
   [%expect {| -1.4 |}]
 ;;
 
-let%expect_test ("to_string_hum, tie resolved differently, native"[@tags "no-js"]) =
+let%expect_test ("to_string_hum, tie resolved differently, native" [@tags "no-js"]) =
   print_endline (Float.to_string_hum (-1.25) ~decimals:1);
   [%expect {| -1.2 |}];
   print_endline (Float.to_string_hum 1.25 ~decimals:1);
   [%expect {| 1.2 |}]
 ;;
 
-let%expect_test ("to_string_hum, tie resolved differently, js"[@tags "js-only"]) =
+let%expect_test ("to_string_hum, tie resolved differently, js" [@tags "js-only"]) =
   print_endline (Float.to_string_hum (-1.25) ~decimals:1);
   [%expect {| -1.3 |}];
   print_endline (Float.to_string_hum 1.25 ~decimals:1);
@@ -753,7 +753,7 @@ let%test_module _ =
 
     (* Note that the V2 serialization is architecture dependent *)
 
-    let%expect_test ("bin_io serialization V2 (64bits)"[@tags "64-bits-only"]) =
+    let%expect_test ("bin_io serialization V2 (64bits)" [@tags "64-bits-only"]) =
       bin_io_tests (module V2);
       [%expect
         {|
@@ -781,7 +781,7 @@ let%test_module _ =
          -1073741825 -> ( 6) \001\253\255\255\255\191 |}]
     ;;
 
-    let%expect_test ("bin_io serialization V2 (javascript)"[@tags "js-only"]) =
+    let%expect_test ("bin_io serialization V2 (javascript)" [@tags "js-only"]) =
       bin_io_tests (module V2);
       [%expect
         {|
