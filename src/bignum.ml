@@ -823,6 +823,8 @@ let is_representable_as_decimal t =
 ;;
 
 let is_nan t = Z.equal t.den Z.zero && Z.equal t.num Z.zero
+let is_integer t = Z.equal t.den Z.one
+let to_bigint_opt t = if is_integer t then Some (Bigint.of_zarith_bigint t.num) else None
 
 let round_to_nearest_z_half_to_even t =
   let t = t + half in

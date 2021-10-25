@@ -110,6 +110,12 @@ val is_real : t -> bool
 (** [true] if and only if the number is undefined. *)
 val is_nan : t -> bool
 
+(** [true] iff the number is an integer. *)
+val is_integer : t -> bool
+
+(** Returns [Some bigint] if [is_integer t] would return [true]. *)
+val to_bigint_opt : t -> Bigint.t option
+
 (** Pretty print bignum in an approximate decimal form or print inf, -inf, nan.  For
     example [to_string_hum ~delimiter:',' ~decimals:3 ~strip_zero:false 1234.1999 =
     "1,234.200"].  No delimiters are inserted to the right of the decimal. *)
