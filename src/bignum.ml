@@ -1162,7 +1162,7 @@ let gen_incl = For_quickcheck.gen_incl
 let gen_uniform_excl = For_quickcheck.gen_uniform_excl
 let quickcheck_shrinker = For_quickcheck.quickcheck_shrinker
 
-module For_utop : sig end = struct
+module _ : sig end = struct
   include Pretty_printer.Register (struct
       include Unstable
 
