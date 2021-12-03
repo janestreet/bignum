@@ -1,3 +1,3 @@
 (library (name bignum_test)
- (libraries bigint bignum core_kernel.core expect_test_helpers_core)
+ (libraries bigint bignum core expect_test_helpers_core)
  (preprocess (pps ppx_jane)))
