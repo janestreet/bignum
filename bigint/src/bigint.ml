@@ -22,11 +22,13 @@ end
 module Stable = struct
   module V1 = struct
     module Bin_rep = struct
+      open Stable_witness.Export
+
       type t =
         | Zero
         | Pos of string
         | Neg of string
-      [@@deriving bin_io]
+      [@@deriving bin_io, stable_witness]
     end
 
     module Bin_rep_conversion = struct
@@ -54,6 +56,20 @@ module Stable = struct
 
     include Sexpable.Stable.Of_stringable.V1 (Stringable_t)
     include Binable.Stable.Of_binable.V1 [@alert "-legacy"] (Bin_rep) (Bin_rep_conversion)
+
+    let stable_witness : t Stable_witness.t =
+      let (_bin_io : t Stable_witness.t) =
+        (* Binable.Stable.of_binable.V1 *)
+        Stable_witness.of_serializable
+          Bin_rep.stable_witness
+          Bin_rep_conversion.of_binable
+          Bin_rep_conversion.to_binable
+      in
+      let (_sexp : t Stable_witness.t) =
+        Stable_witness.assert_stable
+      in
+      Stable_witness.assert_stable
+    ;;
   end
 
   module V2 = struct
@@ -144,12 +160,28 @@ module Stable = struct
     let bin_t : t Bin_prot.Type_class.t =
       { shape = bin_shape_t; writer = bin_writer_t; reader = bin_reader_t }
     ;;
+
+    let stable_witness : t Stable_witness.t =
+      let (_bin_io : t Stable_witness.t) =
+        (* implemented directly above *)
+        Stable_witness.assert_stable
+      in
+      let (_sexp : t Stable_witness.t) =
+        Stable_witness.assert_stable
+      in
+      Stable_witness.assert_stable
+    ;;
   end
 end
 
 module Unstable = struct
   include Stable.V1
   include Stringable_t
+
+  let of_string_opt t =
+    try Some (of_string t) with
+    | _ -> None
+  ;;
 
   let (t_sexp_grammar : t Sexplib.Sexp_grammar.t) = { untyped = Integer }
   let of_zarith_bigint t = t

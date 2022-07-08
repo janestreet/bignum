@@ -361,6 +361,22 @@ module Stable = struct
     ;;
 
     include Binable.Of_binable.V1 [@alert "-legacy"] (String.V1) (Bin_rep_conversion)
+
+    let stable_witness =
+      let (_bin_io : t Stable_witness.t) =
+        (* [Binable.Of_binable.V1] *)
+        Stable_witness.of_serializable
+          String.V1.stable_witness
+          Bin_rep_conversion.of_binable
+          Bin_rep_conversion.to_binable
+      in
+      let (_sexp : t Stable_witness.t) =
+        (* Defined directly above *)
+        Stable_witness.assert_stable
+      in
+      Stable_witness.assert_stable
+    ;;
+
     module For_testing = Bin_rep_conversion
   end
 
@@ -416,7 +432,7 @@ module Stable = struct
         | Over_100_000_000 of Int63.t
         | Over_int of Int63.t * Int63.t
         | Other of V1.t
-      [@@deriving bin_io, variants]
+      [@@deriving bin_io, stable_witness, variants]
     end
 
     let z_of_int63 =
@@ -572,6 +588,21 @@ module Stable = struct
     ;;
 
     let bin_reader_t = { bin_reader_t with Bin_prot.Type_class.read = bin_read_t }
+
+    let stable_witness =
+      let (_bin_io : t Stable_witness.t) =
+        (* [Binable.Of_binable.V1] *)
+        Stable_witness.of_serializable
+          Bin_rep.stable_witness
+          Bin_rep_conversion.of_binable
+          Bin_rep_conversion.to_binable
+      in
+      let (_sexp : t Stable_witness.t) =
+        (* Aliased to V1 *)
+        V1.stable_witness
+      in
+      Stable_witness.assert_stable
+    ;;
   end
 
   module V3 = struct
@@ -621,7 +652,7 @@ module Stable = struct
             { num : Bigint.Stable.V2.t
             ; den : Bigint.Stable.V2.t
             }
-      [@@deriving bin_io, variants]
+      [@@deriving bin_io, stable_witness, variants]
     end
 
     module Bin_rep_conversion = struct
@@ -797,6 +828,21 @@ module Stable = struct
     ;;
 
     let bin_reader_t = { bin_reader_t with Bin_prot.Type_class.read = bin_read_t }
+
+    let stable_witness =
+      let (_bin_io : t Stable_witness.t) =
+        (* [Binable.Of_binable.V1] *)
+        Stable_witness.of_serializable
+          Bin_rep.stable_witness
+          Bin_rep_conversion.of_binable
+          Bin_rep_conversion.to_binable
+      in
+      let (_sexp : t Stable_witness.t) =
+        (* Aliased to V1 *)
+        V1.stable_witness
+      in
+      Stable_witness.assert_stable
+    ;;
   end
 
   (* Note V1, V2 and V3 are the same type in ocaml.  The only thing
@@ -1020,6 +1066,7 @@ let pp_accurate ppf t = Format.fprintf ppf "%s" (to_string_accurate t)
 include (Hashable.Make_binable (Unstable) : Hashable.S_binable with type t := t)
 
 let of_float_decimal f = of_string (Float.to_string f)
+let arg_type = Command.Arg_type.create of_string
 
 module O = struct
   let ( + ) = ( + )

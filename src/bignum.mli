@@ -56,6 +56,9 @@ val inverse : t -> t
 
 val sum : t list -> t
 
+(** Round toward zero to an integer. *)
+val truncate : t -> t
+
 (** Default rounding direction is [`Nearest].
     [to_multiple_of] defaults to [one] and must not be [zero]. *)
 val round : ?dir:[ `Down | `Up | `Nearest | `Zero ] -> ?to_multiple_of:t -> t -> t
@@ -234,6 +237,8 @@ val gen_uniform_excl : t -> t -> t Quickcheck.Generator.t
     weight given to producing the endpoints [lower_bound] and [upper_bound]. *)
 val gen_incl : t -> t -> t Quickcheck.Generator.t
 
+val arg_type : t Command.Arg_type.t
+
 module Stable : sig
   module V1 : sig
     module For_testing : sig
@@ -243,7 +248,7 @@ module Stable : sig
       val of_binable : target -> t
     end
 
-    type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp]
+    type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp, stable_witness]
   end
 
   module V2 : sig
@@ -256,7 +261,7 @@ module Stable : sig
       val of_binable : target -> t
     end
 
-    type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp]
+    type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp, stable_witness]
   end
 
   module V3 : sig
@@ -269,7 +274,7 @@ module Stable : sig
       val of_binable : target -> t
     end
 
-    type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp]
+    type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp, stable_witness]
   end
 end
 

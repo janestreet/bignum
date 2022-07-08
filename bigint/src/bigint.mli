@@ -33,11 +33,11 @@ val gen_negative : t Quickcheck.Generator.t
 
 module Stable : sig
   module V1 : sig
-    type nonrec t = t [@@deriving bin_io, compare, sexp]
+    type nonrec t = t [@@deriving bin_io, compare, sexp, stable_witness]
   end
 
   module V2 : sig
-    type nonrec t = t [@@deriving bin_io, compare, sexp]
+    type nonrec t = t [@@deriving bin_io, compare, sexp, stable_witness]
   end
 end
 
