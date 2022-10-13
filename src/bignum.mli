@@ -113,6 +113,15 @@ val is_real : t -> bool
 (** [true] if and only if the number is undefined. *)
 val is_nan : t -> bool
 
+(** [true] if and only if the number is either positive or negative infinity. *)
+val is_infinite : t -> bool
+
+(** [true] if and only if the number is positive infinity. *)
+val is_positive_infinity : t -> bool
+
+(** [true] if and only if the number is negative infinity. *)
+val is_negative_infinity : t -> bool
+
 (** [true] iff the number is an integer. *)
 val is_integer : t -> bool
 

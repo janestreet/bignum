@@ -917,6 +917,59 @@ let%test _ = ten ** 12 = trillion
 let%test _ = ten ** -2 = of_string_internal "0.01"
 let%test _ = one ** Int.min_value = one
 
+let%expect_test "infinity" =
+  let test x =
+    print_s
+      [%message
+        (x : t)
+          (is_infinite x : bool)
+          (is_positive_infinity x : bool)
+          (is_negative_infinity x : bool)]
+  in
+  test (of_int 3 / of_int 0);
+  [%expect
+    {|
+    ((x                        inf)
+     ("is_infinite x"          true)
+     ("is_positive_infinity x" true)
+     ("is_negative_infinity x" false)) |}];
+  test (of_string "3/0");
+  [%expect
+    {|
+    ((x                        inf)
+     ("is_infinite x"          true)
+     ("is_positive_infinity x" true)
+     ("is_negative_infinity x" false)) |}];
+  test (of_int (-3) / of_int 0);
+  [%expect
+    {|
+    ((x                        -inf)
+     ("is_infinite x"          true)
+     ("is_positive_infinity x" false)
+     ("is_negative_infinity x" true)) |}];
+  test infinity;
+  [%expect
+    {|
+    ((x                        inf)
+     ("is_infinite x"          true)
+     ("is_positive_infinity x" true)
+     ("is_negative_infinity x" false)) |}];
+  test neg_infinity;
+  [%expect
+    {|
+    ((x                        -inf)
+     ("is_infinite x"          true)
+     ("is_positive_infinity x" false)
+     ("is_negative_infinity x" true)) |}];
+  test (of_string "0/0");
+  [%expect
+    {|
+    ((x                        nan)
+     ("is_infinite x"          false)
+     ("is_positive_infinity x" false)
+     ("is_negative_infinity x" false)) |}]
+;;
+
 let%test _ =
   of_string_internal "2" ** 1000
   = of_string_internal
