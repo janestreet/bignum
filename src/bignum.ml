@@ -33,6 +33,25 @@ module Q = struct
   include Zarith.Q
   open (Int : Interfaces.Infix_comparators with type t := int)
 
+  let t_sexp_grammar : t Sexplib.Sexp_grammar.t =
+    let plus_character : Sexplib.Sexp_grammar.grammar =
+      Variant
+        { case_sensitivity = Case_insensitive
+        ; clauses = [ No_tag { name = "+"; clause_kind = Atom_clause } ]
+        }
+    in
+    { untyped =
+        Union
+          [ Float
+          ; plus_character
+          ; List
+              (Cons
+                 ( Union [ Float; plus_character ]
+                 , Cons (plus_character, Cons (String, Empty)) ))
+          ]
+    }
+  ;;
+
   let of_float_dyadic = of_float
   let of_float = `dont_use_it
   let _ = of_float
@@ -339,7 +358,7 @@ module Stable = struct
       let of_binable = Q.of_rational_string
     end
 
-    type t = Q.t [@@deriving compare, equal, hash]
+    type t = Q.t [@@deriving compare, equal, hash, sexp_grammar]
 
     let sexp_of_t t =
       let open Core in
@@ -495,7 +514,7 @@ module Stable = struct
             let d = Z.to_int den in
             (* Z.fits_int den *)
             let ( = ) = Core.Int.( = ) in
-            let ( mod ) = Caml.( mod ) in
+            let ( mod ) = Stdlib.( mod ) in
             if d = 0
             then Bin_rep.Other t
             else if d = 1
@@ -548,6 +567,7 @@ module Stable = struct
 
     let t_of_sexp = V1.t_of_sexp
     let sexp_of_t = V1.sexp_of_t
+    let t_sexp_grammar = V1.t_sexp_grammar
 
     let bin_read_t buf ~pos_ref =
       let bin_read_z_as_int63 buf ~pos_ref =
@@ -785,6 +805,7 @@ module Stable = struct
 
     let t_of_sexp = V1.t_of_sexp
     let sexp_of_t = V1.sexp_of_t
+    let t_sexp_grammar = V1.t_sexp_grammar
 
     let bin_read_t buf ~pos_ref =
       let bin_read_z_as_int63 buf ~pos_ref =

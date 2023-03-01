@@ -1,3 +1,4 @@
 (library (name bignum_test)
- (libraries bigint bignum core expect_test_helpers_core)
+ (libraries bigint bignum core expect_test_helpers_core
+  sexp_grammar_validation)
  (preprocess (pps ppx_jane)))

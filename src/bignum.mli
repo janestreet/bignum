@@ -1,7 +1,7 @@
 (** Arbitrary-precision rational numbers. *)
 open! Core
 
-type t [@@deriving hash]
+type t [@@deriving hash, sexp_grammar]
 
 (** Sexp conversions represent values as decimals if possible, or defaults to [(x + y/z)]
     where [x] is decimal and [y] and [z] are integers.  So for example, 1/3 <->
@@ -257,7 +257,8 @@ module Stable : sig
       val of_binable : target -> t
     end
 
-    type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp, stable_witness]
+    type nonrec t = t
+    [@@deriving bin_io, compare, equal, hash, sexp, sexp_grammar, stable_witness]
   end
 
   module V2 : sig
@@ -270,7 +271,8 @@ module Stable : sig
       val of_binable : target -> t
     end
 
-    type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp, stable_witness]
+    type nonrec t = t
+    [@@deriving bin_io, compare, equal, hash, sexp, sexp_grammar, stable_witness]
   end
 
   module V3 : sig
@@ -283,12 +285,13 @@ module Stable : sig
       val of_binable : target -> t
     end
 
-    type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp, stable_witness]
+    type nonrec t = t
+    [@@deriving bin_io, compare, equal, hash, sexp, sexp_grammar, stable_witness]
   end
 end
 
 module Unstable : sig
-  type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp]
+  type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp, sexp_grammar]
 end
 
 module O : sig
