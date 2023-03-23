@@ -76,8 +76,7 @@ let%expect_test "Subnormals are handled correctly by [Zarith.Q.to_float]" =
   require_does_not_raise [%here] (fun () ->
     let x = 7.56181796669062E-309 in
     let x' = x |> Bignum.of_float_decimal |> Bignum.to_float in
-    if not (Float.( = ) x x')
-    then raise_s [%message "mismatch" (x : float) (x' : float)]);
+    if not (Float.( = ) x x') then raise_s [%message "mismatch" (x : float) (x' : float)]);
   [%expect {| |}]
 ;;
 
@@ -90,44 +89,35 @@ let%expect_test "roundtrip: f |> Bignum.of_float_dyadic |> Bignum.to_float" =
 
 let%expect_test "to_string_accurate |> of_string" =
   require_does_not_raise [%here] (fun () ->
-    Quickcheck.test
-      ~sexp_of:[%sexp_of: Bignum.t]
-      Bignum.quickcheck_generator
-      ~f:(fun x ->
-        [%test_result: Bignum.t]
-          ~expect:x
-          (x |> Bignum.to_string_accurate |> Bignum.of_string)));
+    Quickcheck.test ~sexp_of:[%sexp_of: Bignum.t] Bignum.quickcheck_generator ~f:(fun x ->
+      [%test_result: Bignum.t]
+        ~expect:x
+        (x |> Bignum.to_string_accurate |> Bignum.of_string)));
   [%expect {| |}]
 ;;
 
 let%expect_test "to_string_accurate matches sexp_of_t" =
   require_does_not_raise [%here] (fun () ->
-    Quickcheck.test
-      ~sexp_of:[%sexp_of: Bignum.t]
-      Bignum.quickcheck_generator
-      ~f:(fun x ->
-        [%test_result: string]
-          ~expect:(Bignum.to_string_accurate x)
-          (x |> Bignum.sexp_of_t |> Sexp.to_string)));
+    Quickcheck.test ~sexp_of:[%sexp_of: Bignum.t] Bignum.quickcheck_generator ~f:(fun x ->
+      [%test_result: string]
+        ~expect:(Bignum.to_string_accurate x)
+        (x |> Bignum.sexp_of_t |> Sexp.to_string)));
   [%expect {| |}]
 ;;
 
 let%expect_test "to_string_hum |> of_string" =
   require_does_not_raise [%here] (fun () ->
-    Quickcheck.test
-      ~sexp_of:[%sexp_of: Bignum.t]
-      Bignum.quickcheck_generator
-      ~f:(fun x ->
-        let decimals = 9 in
-        let dx = Bignum.to_string_hum ~decimals x |> Bignum.of_string in
-        let dx2 = Bignum.to_string_hum ~decimals ~delimiter:'_' x |> Bignum.of_string in
-        [%test_eq: Bignum.t] dx dx2;
-        let expect =
-          if Bignum.is_zero (Bignum.den x)
-          then x
-          else Bignum.round_decimal_to_nearest_half_to_even ~digits:decimals x
-        in
-        [%test_result: Bignum.t] ~expect dx));
+    Quickcheck.test ~sexp_of:[%sexp_of: Bignum.t] Bignum.quickcheck_generator ~f:(fun x ->
+      let decimals = 9 in
+      let dx = Bignum.to_string_hum ~decimals x |> Bignum.of_string in
+      let dx2 = Bignum.to_string_hum ~decimals ~delimiter:'_' x |> Bignum.of_string in
+      [%test_eq: Bignum.t] dx dx2;
+      let expect =
+        if Bignum.is_zero (Bignum.den x)
+        then x
+        else Bignum.round_decimal_to_nearest_half_to_even ~digits:decimals x
+      in
+      [%test_result: Bignum.t] ~expect dx));
   [%expect {| |}]
 ;;
 
@@ -362,6 +352,7 @@ let%test _ = equal (of_string_internal "-1/2") (of_string_internal "-.5")
 let%test _ = equal (of_string_internal "100_000") (of_string_internal "100000")
 let%test _ = equal (of_string_internal "100_000") (of_int 100_000)
 let%test _ = equal (of_string_internal "100_000.") (of_int 100_000)
+
 let%test _ = equal (of_string_internal "100__000.") (of_int 100_000)
 let%test _ = equal (of_string_internal "100_000.0_") (of_int 100_000)
 let%test _ = equal (of_string_internal "-_1_0_/0_1") (of_int (-10))
@@ -570,6 +561,7 @@ let%test_module _ =
 
     (* This checks an axiom used in the proof of [check_overflow] *)
     let%test _ = Int.(-max_value > min_value)
+
     (* This contains a test for all branches.*)
     let%test_unit _ = test Current.zero (* test for Zero *)
     let%test_unit _ = test Current.one (* test for Int *)
@@ -579,7 +571,6 @@ let%test_module _ =
     let%test_unit _ = test Current.million
     let%test_unit _ = test Current.billion
     let%test_unit _ = test Current.trillion
-
     let ( / ) = Current.( / )
     let ( * ) = Current.( * )
 
@@ -596,6 +587,7 @@ let%test_module _ =
     let%test_unit _ = test (Current.one / (Current.billion * Current.ten))
     let%test_unit _ = test (Current.one / (Current.billion * Current.hundred))
     let%test_unit _ = test (Current.one / Current.trillion)
+
     (* Test for Over_int *)
     let%test_unit _ = test (Current.of_int 2 / Current.of_int 3)
 
@@ -606,8 +598,10 @@ let%test_module _ =
          and fallback on Other(2^62, 25) *)
       let%test_unit _ = test (mul_2exp Current.one 62 / Current.of_int 25)
       let%test_unit _ = test (mul_2exp (Current.of_int (-1)) 62 / Current.of_int 25)
+
       (* This test tests for overflow in the numerator *)
       let%test_unit _ = test (mul_2exp Current.one 65 / Current.of_int 25)
+
       (* This test tests for overflow in the denominator *)
       let%test_unit _ = test (Current.one / mul_2exp Current.one 65)
     end
@@ -983,7 +977,6 @@ let%test_module "round" =
   (module struct
     let x = of_string "1.23456789"
     let neg_x = neg x
-
     let%test _ = round x = of_string "1"
     let%test _ = round ~to_multiple_of:tenth x = of_string "1.2"
     let%test _ = round ~to_multiple_of:hundredth x = of_string "1.23"
