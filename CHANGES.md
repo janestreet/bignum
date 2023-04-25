@@ -1,3 +1,21 @@
+## Release v0.16.0
+
+- `Big_int`
+  - Adds `stable_witness` derivation to both the `BigInt.Stable.V1` and `BigInt.Stable.V2`
+    modules. This facilitates compatibility checks between different versions of serialized
+    data
+- `Big_num`
+  - Add deriving attributes:
+    - `Bignum.t`, `Bignum.Stable.t`, and `Bignum.Unstable.t` derive `sexp_grammar`
+  - Add new functions to `Bignum`:
+    - `truncate`: Rounds the input towards zero to an integer
+    - `is_infinite`: Returns true if the number is either positive or negative infinity
+    - `is_positive_infinity`: Returns true if the number is positive infinity
+    - `is_negative_infinity`: Returns true if the number is negative infinity
+  - Add `arg_type` to `Bignum`, for ease of use in `Command.t` based parsers
+
+## Old pre-v0.15 changelogs (very likely stale and incomplete)
+
 ## 113.33.00
 
 - This release improves the slow path of bignum of string. The previous
