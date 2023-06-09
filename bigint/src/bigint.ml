@@ -95,46 +95,46 @@ module Stable = struct
 
     let bin_size_t : t Bin_prot.Size.sizer =
       fun x ->
-        let size_in_bytes = compute_size_in_bytes x in
-        if size_in_bytes = 0
-        then Int63.bin_size_t Int63.zero
-        else (
-          let negative = Z.sign x = -1 in
-          let tag = compute_tag ~size_in_bytes ~negative in
-          Int63.bin_size_t tag + size_in_bytes)
+      let size_in_bytes = compute_size_in_bytes x in
+      if size_in_bytes = 0
+      then Int63.bin_size_t Int63.zero
+      else (
+        let negative = Z.sign x = -1 in
+        let tag = compute_tag ~size_in_bytes ~negative in
+        Int63.bin_size_t tag + size_in_bytes)
     ;;
 
     let bin_write_t : t Bin_prot.Write.writer =
       fun buf ~pos x ->
-        let size_in_bytes = compute_size_in_bytes x in
-        if size_in_bytes = 0
-        then Int63.bin_write_t buf ~pos Int63.zero
-        else (
-          let bits = Z.to_bits x in
-          let negative = Z.sign x = -1 in
-          let tag = compute_tag ~size_in_bytes ~negative in
-          let pos = Int63.bin_write_t buf ~pos tag in
-          Bin_prot.Common.blit_string_buf bits ~dst_pos:pos buf ~len:size_in_bytes;
-          pos + size_in_bytes)
+      let size_in_bytes = compute_size_in_bytes x in
+      if size_in_bytes = 0
+      then Int63.bin_write_t buf ~pos Int63.zero
+      else (
+        let bits = Z.to_bits x in
+        let negative = Z.sign x = -1 in
+        let tag = compute_tag ~size_in_bytes ~negative in
+        let pos = Int63.bin_write_t buf ~pos tag in
+        Bin_prot.Common.blit_string_buf bits ~dst_pos:pos buf ~len:size_in_bytes;
+        pos + size_in_bytes)
     ;;
 
     let bin_read_t : t Bin_prot.Read.reader =
       fun buf ~pos_ref ->
-        let tag = Core.Int63.bin_read_t buf ~pos_ref in
-        if Int63.equal tag Int63.zero
-        then Z.zero
-        else (
-          let negative = Int63.(tag land one = one) in
-          let size_in_bytes = Int63.(to_int_exn (shift_right tag 1)) in
-          (* Even though we could cache a buffer for small sizes, the extra logic leads to
-             a decrease in performance *)
-          let bytes = Bytes.create size_in_bytes in
-          Bin_prot.Common.blit_buf_bytes ~src_pos:!pos_ref buf bytes ~len:size_in_bytes;
-          let abs =
-            Z.of_bits (Bytes.unsafe_to_string ~no_mutation_while_string_reachable:bytes)
-          in
-          pos_ref := !pos_ref + size_in_bytes;
-          if negative then Z.neg abs else abs)
+      let tag = Core.Int63.bin_read_t buf ~pos_ref in
+      if Int63.equal tag Int63.zero
+      then Z.zero
+      else (
+        let negative = Int63.(tag land one = one) in
+        let size_in_bytes = Int63.(to_int_exn (shift_right tag 1)) in
+        (* Even though we could cache a buffer for small sizes, the extra logic leads to
+           a decrease in performance *)
+        let bytes = Bytes.create size_in_bytes in
+        Bin_prot.Common.blit_buf_bytes ~src_pos:!pos_ref buf bytes ~len:size_in_bytes;
+        let abs =
+          Z.of_bits (Bytes.unsafe_to_string ~no_mutation_while_string_reachable:bytes)
+        in
+        pos_ref := !pos_ref + size_in_bytes;
+        if negative then Z.neg abs else abs)
     ;;
 
     let module_name = "Bigint.Stable.V2.t"
@@ -214,6 +214,9 @@ module Unstable = struct
   let hash_fold_t state t = Int.hash_fold_t state (Z.hash t)
   let hash = Z.hash
   let compare = Z.compare
+
+  external compare__local : (t[@local]) -> (t[@local]) -> int = "ml_z_compare"
+
   let ( - ) = Z.( - )
   let ( + ) = Z.( + )
   let ( * ) = Z.( * )
@@ -225,6 +228,9 @@ module Unstable = struct
   let succ = Z.succ
   let pred = Z.pred
   let equal = Z.equal
+
+  external equal__local : (t[@local]) -> (t[@local]) -> bool = "ml_z_equal"
+
   let ( = ) = Z.equal
   let ( < ) = Z.lt
   let ( > ) = Z.gt
@@ -464,7 +470,7 @@ module Hex = struct
   type nonrec t = t [@@deriving bin_io, typerep]
 
   module M = Base.Int_conversions.Make_hex (struct
-      type nonrec t = t [@@deriving hash, compare]
+      type nonrec t = t [@@deriving hash, compare ~localize]
 
       let to_string i = Z.format "%x" i
       let of_hex_string str = Z.of_string_base 16 str
