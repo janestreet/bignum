@@ -1027,6 +1027,40 @@ let%test_module "round" =
     let%test _ = round_decimal ~dir:`Zero ~digits:2 neg_x = of_string "-1.23"
     let%test _ = round_decimal ~dir:`Zero ~digits:3 neg_x = of_string "-1.234"
     let%test _ = round_decimal ~dir:`Zero ~digits:4 neg_x = of_string "-1.2345"
+    let%test _ = round_decimal ~dir:`Bankers ~digits:0 x = of_string "1"
+    let%test _ = round_decimal ~dir:`Bankers ~digits:1 x = of_string "1.2"
+    let%test _ = round_decimal ~dir:`Bankers ~digits:2 x = of_string "1.23"
+    let%test _ = round_decimal ~dir:`Bankers ~digits:3 x = of_string "1.235"
+    let%test _ = round_decimal ~dir:`Bankers ~digits:4 x = of_string "1.2346"
+    let%test _ = round_decimal ~dir:`Bankers ~digits:0 neg_x = of_string "-1"
+    let%test _ = round_decimal ~dir:`Bankers ~digits:1 neg_x = of_string "-1.2"
+    let%test _ = round_decimal ~dir:`Bankers ~digits:2 neg_x = of_string "-1.23"
+    let%test _ = round_decimal ~dir:`Bankers ~digits:3 neg_x = of_string "-1.235"
+    let%test _ = round_decimal ~dir:`Bankers ~digits:4 neg_x = of_string "-1.2346"
+
+    let%test _ =
+      round_decimal ~dir:`Bankers ~digits:1 (of_string "1.3499") = of_string "1.3"
+    ;;
+
+    let%test _ =
+      round_decimal ~dir:`Bankers ~digits:1 (of_string "1.35") = of_string "1.4"
+    ;;
+
+    let%test _ =
+      round_decimal ~dir:`Bankers ~digits:1 (of_string "1.351") = of_string "1.4"
+    ;;
+
+    let%test _ =
+      round_decimal ~dir:`Bankers ~digits:1 (of_string "1.4499") = of_string "1.4"
+    ;;
+
+    let%test _ =
+      round_decimal ~dir:`Bankers ~digits:1 (of_string "1.45") = of_string "1.4"
+    ;;
+
+    let%test _ =
+      round_decimal ~dir:`Bankers ~digits:1 (of_string "1.451") = of_string "1.5"
+    ;;
 
     let%test _ =
       try

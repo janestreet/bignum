@@ -1000,12 +1000,20 @@ let floor t =
 (* This is quite a common case, and substantially faster than faffing around with
    [to_multiple_of] *)
 
-let round_integer ?(dir = `Nearest) t =
+let round_integer ?dir t =
+  let dir =
+    (* We do this so that the mli doesn't need to have the [> `Nearest] restriction added
+       to it. *)
+    Option.value
+      (dir :> [ `Zero | `Down | `Up | `Nearest | `Bankers ] option)
+      ~default:`Nearest
+  in
   match dir with
   | `Zero -> truncate t
   | `Down -> floor t
   | `Up -> neg (floor (neg t))
   | `Nearest -> floor (t + half)
+  | `Bankers -> round_decimal_to_nearest_half_to_even ~digits:0 t
 ;;
 
 let round ?dir ?to_multiple_of t =

@@ -61,30 +61,34 @@ val truncate : t -> t
 
 (** Default rounding direction is [`Nearest].
     [to_multiple_of] defaults to [one] and must not be [zero]. *)
-val round : ?dir:[ `Down | `Up | `Nearest | `Zero ] -> ?to_multiple_of:t -> t -> t
+val round
+  :  ?dir:[< `Down | `Up | `Nearest | `Zero | `Bankers ]
+  -> ?to_multiple_of:t
+  -> t
+  -> t
 
 (** [None] if the result would overflow or [to_multiple_of] is zero. *)
 val iround
-  :  ?dir:[ `Down | `Up | `Nearest | `Zero ]
+  :  ?dir:[< `Down | `Up | `Nearest | `Zero | `Bankers ]
   -> ?to_multiple_of:int
   -> t
   -> int option
 
 val round_as_bigint
-  :  ?dir:[ `Down | `Up | `Nearest | `Zero ]
+  :  ?dir:[< `Down | `Up | `Nearest | `Zero | `Bankers ]
   -> ?to_multiple_of:Bigint.t
   -> t
   -> Bigint.t option
 
 (** Exception if the result would overflow or [to_multiple_of] is zero. *)
 val iround_exn
-  :  ?dir:[ `Down | `Up | `Nearest | `Zero ]
+  :  ?dir:[< `Down | `Up | `Nearest | `Zero | `Bankers ]
   -> ?to_multiple_of:int
   -> t
   -> int
 
 val round_as_bigint_exn
-  :  ?dir:[ `Down | `Up | `Nearest | `Zero ]
+  :  ?dir:[< `Down | `Up | `Nearest | `Zero | `Bankers ]
   -> ?to_multiple_of:Bigint.t
   -> t
   -> Bigint.t
@@ -92,7 +96,11 @@ val round_as_bigint_exn
 
 (** Convenience wrapper around [round] to round to the specified number
     of decimal digits.  This raises if the number is infinite or undefined. *)
-val round_decimal : ?dir:[ `Down | `Up | `Nearest | `Zero ] -> digits:int -> t -> t
+val round_decimal
+  :  ?dir:[< `Down | `Up | `Nearest | `Zero | `Bankers ]
+  -> digits:int
+  -> t
+  -> t
 
 val round_decimal_to_nearest_half_to_even : digits:int -> t -> t
 val to_float : t -> float
