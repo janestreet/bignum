@@ -46,22 +46,22 @@ module Unstable : sig
 end
 
 val bin_size_t : t Bin_prot.Size.sizer
-[@@deprecated "[since 2019-10] use module V1 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V1 or Unstable instead"]
 
 val bin_write_t : t Bin_prot.Write.writer
-[@@deprecated "[since 2019-10] use module V1 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V1 or Unstable instead"]
 
 val bin_read_t : t Bin_prot.Read.reader
-[@@deprecated "[since 2019-10] use module V1 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V1 or Unstable instead"]
 
 val __bin_read_t__ : (int -> t) Bin_prot.Read.reader
-[@@deprecated "[since 2019-10] use module V1 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V1 or Unstable instead"]
 
 val bin_writer_t : t Bin_prot.Type_class.writer
-[@@deprecated "[since 2019-10] use module V1 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V1 or Unstable instead"]
 
 val bin_reader_t : t Bin_prot.Type_class.reader
-[@@deprecated "[since 2019-10] use module V1 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V1 or Unstable instead"]
 
 val bin_t : t Bin_prot.Type_class.t
-[@@deprecated "[since 2019-10] use module V1 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V1 or Unstable instead"]

@@ -9,9 +9,9 @@ module type For_sexp = sig
 end
 
 let runtest
-      (type t)
-      (module Q : For_quickcheck with type t = t)
-      (module S : For_sexp with type t = t)
+  (type t)
+  (module Q : For_quickcheck with type t = t)
+  (module S : For_sexp with type t = t)
   =
   let module M = struct
     include Q

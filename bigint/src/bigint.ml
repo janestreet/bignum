@@ -65,9 +65,7 @@ module Stable = struct
           Bin_rep_conversion.of_binable
           Bin_rep_conversion.to_binable
       in
-      let (_sexp : t Stable_witness.t) =
-        Stable_witness.assert_stable
-      in
+      let (_sexp : t Stable_witness.t) = Stable_witness.assert_stable in
       Stable_witness.assert_stable
     ;;
   end
@@ -166,9 +164,7 @@ module Stable = struct
         (* implemented directly above *)
         Stable_witness.assert_stable
       in
-      let (_sexp : t Stable_witness.t) =
-        Stable_witness.assert_stable
-      in
+      let (_sexp : t Stable_witness.t) = Stable_witness.assert_stable in
       Stable_witness.assert_stable
     ;;
   end
@@ -286,10 +282,10 @@ module T_conversions = Int_conversions.Make (Unstable)
 module T_comparable_with_zero = Comparable.With_zero (Unstable)
 
 module T_identifiable = Identifiable.Make (struct
-    let module_name = module_name
+  let module_name = module_name
 
-    include Unstable
-  end)
+  include Unstable
+end)
 
 (* Including in opposite order to shadow functorized bindings with direct bindings. *)
 module O = struct
@@ -303,11 +299,11 @@ end
 include (O : module type of O with type t := t)
 
 module Make_random (State : sig
-    type t
+  type t
 
-    val bits : t -> int
-    val int : t -> int -> int
-  end) : sig
+  val bits : t -> int
+  val int : t -> int -> int
+end) : sig
   val random : state:State.t -> t -> t
 end = struct
   (* Uniform random generation of Bigint values.
@@ -387,11 +383,11 @@ end = struct
   open Generator.Let_syntax
 
   module Uniform = Make_random (struct
-      type t = Splittable_random.State.t
+    type t = Splittable_random.State.t
 
-      let int t range = Splittable_random.int t ~lo:0 ~hi:(Int.pred range)
-      let bits t = int t (Int.shift_left 1 30)
-    end)
+    let int t range = Splittable_random.int t ~lo:0 ~hi:(Int.pred range)
+    let bits t = int t (Int.shift_left 1 30)
+  end)
 
   let random_uniform ~state lo hi = lo + Uniform.random ~state (succ (hi - lo))
 
@@ -470,21 +466,21 @@ module Hex = struct
   type nonrec t = t [@@deriving bin_io, typerep]
 
   module M = Base.Int_conversions.Make_hex (struct
-      type nonrec t = t [@@deriving hash, compare ~localize]
+    type nonrec t = t [@@deriving hash, compare ~localize]
 
-      let to_string i = Z.format "%x" i
-      let of_hex_string str = Z.of_string_base 16 str
-      let of_string str = of_string_base str ~name:"Hex.of_string" ~of_string:of_hex_string
-      let ( < ) = ( < )
-      let neg = neg
-      let zero = zero
-      let module_name = module_name ^ ".Hex"
-    end)
+    let to_string i = Z.format "%x" i
+    let of_hex_string str = Z.of_string_base 16 str
+    let of_string str = of_string_base str ~name:"Hex.of_string" ~of_string:of_hex_string
+    let ( < ) = ( < )
+    let neg = neg
+    let zero = zero
+    let module_name = module_name ^ ".Hex"
+  end)
 
   include (
     M.Hex :
       module type of struct
-      include M.Hex
-    end
-    with type t := t)
+        include M.Hex
+      end
+      with type t := t)
 end

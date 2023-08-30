@@ -352,7 +352,6 @@ let%test _ = equal (of_string_internal "-1/2") (of_string_internal "-.5")
 let%test _ = equal (of_string_internal "100_000") (of_string_internal "100000")
 let%test _ = equal (of_string_internal "100_000") (of_int 100_000)
 let%test _ = equal (of_string_internal "100_000.") (of_int 100_000)
-
 let%test _ = equal (of_string_internal "100__000.") (of_int 100_000)
 let%test _ = equal (of_string_internal "100_000.0_") (of_int 100_000)
 let%test _ = equal (of_string_internal "-_1_0_/0_1") (of_int (-10))
@@ -476,9 +475,9 @@ let%test_unit "of_string matches Float.of_string" =
     ; "125e-3"
     ]
     ~f:(fun s ->
-      as_float s;
-      as_float ("+" ^ s);
-      as_float ("-" ^ s))
+    as_float s;
+    as_float ("+" ^ s);
+    as_float ("-" ^ s))
 ;;
 
 let minus_one = of_int (-1)
@@ -706,8 +705,8 @@ let%test_module _ =
         let buf_as_bytes =
           String.to_list_rev buf
           |> List.rev_map ~f:(function
-            | '0' .. '9' as c -> String.make 1 c
-            | x -> sprintf "\\%03i" (Char.to_int x))
+               | '0' .. '9' as c -> String.make 1 c
+               | x -> sprintf "\\%03i" (Char.to_int x))
           |> String.concat
         in
         printf

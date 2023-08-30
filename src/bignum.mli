@@ -93,7 +93,6 @@ val round_as_bigint_exn
   -> t
   -> Bigint.t
 
-
 (** Convenience wrapper around [round] to round to the specified number
     of decimal digits.  This raises if the number is infinite or undefined. *)
 val round_decimal
@@ -163,7 +162,6 @@ val to_string_hum
     is the identity in [Bignum]. *)
 val to_string_accurate : t -> string
 
-
 (** Transforming a [float] into a [Bignum.t] needs to be done with care.  Most rationals
     and decimals are not exactly representable as floats, thus their float representation
     includes some small imprecision at the end of their decimal form (typically after the
@@ -205,15 +203,13 @@ val of_float_decimal : float -> t
 val of_float_dyadic : float -> t
 
 val of_float : float -> t
-[@@deprecated "[since 2017-03]: Use [of_float_decimal] or [of_float_dyadic]"]
-
+  [@@deprecated "[since 2017-03]: Use [of_float_decimal] or [of_float_dyadic]"]
 
 (** Rounds toward zero. [None] if the conversion would overflow *)
 val to_int : t -> int option
 
 val to_int_exn : t -> int
 val is_zero : t -> bool
-
 
 (** Do not use this function in new code. See [sign_exn] or [sign_or_nan] instead.
 
@@ -340,10 +336,10 @@ module O : sig
 end
 
 val to_string : t -> string
-[@@deprecated "[since 2018-02]: Use [to_string_hum] or another [to_string_*] function"]
+  [@@deprecated "[since 2018-02]: Use [to_string_hum] or another [to_string_*] function"]
 
 val pp : Format.formatter -> t -> unit
-[@@deprecated "[since 2018-02]: Use [pp_hum] or [pp_accurate]"]
+  [@@deprecated "[since 2018-02]: Use [pp_hum] or [pp_accurate]"]
 
 module For_testing : sig
   val of_string_internal : string -> t
@@ -355,22 +351,22 @@ module For_testing : sig
 end
 
 val bin_size_t : t Bin_prot.Size.sizer
-[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
 
 val bin_write_t : t Bin_prot.Write.writer
-[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
 
 val bin_read_t : t Bin_prot.Read.reader
-[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
 
 val __bin_read_t__ : (int -> t) Bin_prot.Read.reader
-[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
 
 val bin_writer_t : t Bin_prot.Type_class.writer
-[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
 
 val bin_reader_t : t Bin_prot.Type_class.reader
-[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
 
 val bin_t : t Bin_prot.Type_class.t
-[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
