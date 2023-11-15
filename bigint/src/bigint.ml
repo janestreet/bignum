@@ -383,7 +383,7 @@ end = struct
   open Generator.Let_syntax
 
   module Uniform = Make_random (struct
-    type t = Splittable_random.State.t
+    type t = Splittable_random.t
 
     let int t range = Splittable_random.int t ~lo:0 ~hi:(Int.pred range)
     let bits t = int t (Int.shift_left 1 30)
