@@ -211,7 +211,7 @@ module Unstable = struct
   let hash = Z.hash
   let compare = Z.compare
 
-  external compare__local : (t[@local]) -> (t[@local]) -> int = "ml_z_compare"
+  external compare__local : t -> t -> int = "ml_z_compare"
 
   let ( - ) = Z.( - )
   let ( + ) = Z.( + )
@@ -225,7 +225,7 @@ module Unstable = struct
   let pred = Z.pred
   let equal = Z.equal
 
-  external equal__local : (t[@local]) -> (t[@local]) -> bool = "ml_z_equal"
+  external equal__local : t -> t -> bool = "ml_z_equal"
 
   let ( = ) = Z.equal
   let ( < ) = Z.lt
@@ -483,4 +483,18 @@ module Hex = struct
         include M.Hex
       end
       with type t := t)
+end
+
+module Binary = struct
+  type nonrec t = t [@@deriving bin_io, compare ~localize, hash, typerep]
+
+  let to_string t = Z.format "%#b" t
+  let chars_per_delimiter = 4
+
+  let to_string_hum ?(delimiter = '_') t =
+    let input = Z.format "%b" t in
+    "0b" ^ Int_conversions.insert_delimiter_every input ~delimiter ~chars_per_delimiter
+  ;;
+
+  let sexp_of_t t : Sexp.t = Atom (to_string t)
 end

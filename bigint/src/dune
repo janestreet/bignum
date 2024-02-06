@@ -1,3 +1,6 @@
-(library (name bigint) (public_name bignum.bigint)
+(library
+ (name bigint)
+ (public_name bignum.bigint)
  (libraries core typerep num splittable_random zarith zarith_stubs_js)
- (preprocess (pps ppx_jane)))
+ (preprocess
+  (pps ppx_jane)))

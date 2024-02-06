@@ -1,22 +1,21 @@
 (** Arbitrary-precision rational numbers. *)
 open! Core
 
-type t [@@deriving hash, sexp_grammar]
+type t [@@deriving compare ~localize, equal ~localize, globalize, hash, sexp_grammar]
 
 (** Sexp conversions represent values as decimals if possible, or defaults to [(x + y/z)]
     where [x] is decimal and [y] and [z] are integers.  So for example, 1/3 <->
     (0.333333333 + 1/3000000000).  In string and sexp conversions, values with denominator
     of zero are special-cased: 0/0 <-> "nan", 1/0 <-> "inf", and -1/0 <-> "-inf". *)
-include Sexpable with type t := t
+include Sexpable.S with type t := t
 
-include Comparable with type t := t
-include Hashable with type t := t
-include Equal.S with type t := t
+include Comparable.S with type t := t
+include Hashable.S with type t := t
 
 (** [gen] produces values with an order of magnitude (roughly the number of digits) in the
     numerator and denominator proportional to [Quickcheck.Generator.size].  Also includes
     values with zero in the denominator. *)
-include Quickcheckable with type t := t
+include Quickcheckable.S with type t := t
 
 val zero : t
 val one : t
@@ -262,7 +261,11 @@ module Stable : sig
     end
 
     type nonrec t = t
-    [@@deriving bin_io, compare, equal, hash, sexp, sexp_grammar, stable_witness]
+    [@@deriving bin_io, compare, hash, sexp, sexp_grammar, stable_witness]
+
+    (** Unlike [Bignum.{equal,compare}] and the [compare] function in this submodule, this
+        [equal] follows IEEE float semantics: [nan] <> [nan]. *)
+    val equal : t -> t -> bool
   end
 
   module V2 : sig
@@ -276,7 +279,11 @@ module Stable : sig
     end
 
     type nonrec t = t
-    [@@deriving bin_io, compare, equal, hash, sexp, sexp_grammar, stable_witness]
+    [@@deriving bin_io, compare, hash, sexp, sexp_grammar, stable_witness]
+
+    (** Unlike [Bignum.{equal,compare}] and the [compare] function in this submodule, this
+        [equal] follows IEEE float semantics: [nan] <> [nan]. *)
+    val equal : t -> t -> bool
   end
 
   module V3 : sig
@@ -291,11 +298,19 @@ module Stable : sig
 
     type nonrec t = t
     [@@deriving bin_io, compare, equal, hash, sexp, sexp_grammar, stable_witness]
+
+    (** Unlike [Bignum.{equal,compare}] and the [compare] function in this submodule, this
+        [equal] follows IEEE float semantics:  [nan] <> [nan]. *)
+    val equal : t -> t -> bool
   end
 end
 
 module Unstable : sig
-  type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp, sexp_grammar]
+  type nonrec t = t [@@deriving bin_io, compare, hash, sexp, sexp_grammar]
+
+  (** Unlike [Bignum.{equal,compare}] and the [compare] function in this submodule, this
+      [equal] follows IEEE float semantics:  [nan] <> [nan]. *)
+  val equal : t -> t -> bool
 end
 
 module O : sig

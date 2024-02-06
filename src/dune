@@ -1,2 +1,6 @@
-(library (name bignum) (public_name bignum)
- (libraries bigint core zarith zarith_stubs_js) (preprocess (pps ppx_jane)))
+(library
+ (name bignum)
+ (public_name bignum)
+ (libraries bigint core zarith zarith_stubs_js)
+ (preprocess
+  (pps ppx_jane)))

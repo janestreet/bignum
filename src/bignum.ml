@@ -2,6 +2,7 @@ module Z = struct
   open Core
   include Zarith.Z
 
+  let hash_fold_t state t = Bigint.hash_fold_t state (Bigint.of_zarith_bigint t)
   let z_ten = of_int 10
 
   let pow_10 =
@@ -33,6 +34,23 @@ module Q = struct
   include Zarith.Q
   open (Int : Interfaces.Infix_comparators with type t := int)
 
+  type t = Zarith.Q.t =
+    { num : Z.t
+    ; den : Z.t
+    }
+  [@@deriving hash]
+
+  let globalize x = x
+
+  (** Unlike [%compare.equal], which is what actually gets exposed as [equal] due to the
+      later [Comparable.Make_binable], this [equal] follows IEEE float semantics: [undef]
+      <> [undef]. *)
+  let equal_which_treats_nan_differently_from_the_exposed_equal = Zarith.Q.equal
+
+  let[@warning "-unused-value-declaration"] equal =
+    `This_gets_redefined_later_in_an_incompatible_way
+  ;;
+
   let t_sexp_grammar : t Sexplib.Sexp_grammar.t =
     let plus_character : Sexplib.Sexp_grammar.grammar =
       Variant
@@ -55,8 +73,6 @@ module Q = struct
   let of_float_dyadic = of_float
   let of_float = `dont_use_it
   let _ = of_float
-  let hash (t : t) = Hashtbl.hash t
-  let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
   let num t = of_bigint t.num
   let den t = of_bigint t.den
   let half = of_ints 1 2
@@ -356,7 +372,11 @@ module Stable = struct
       let of_binable = Q.of_rational_string
     end
 
-    type t = Q.t [@@deriving compare, equal, hash, sexp_grammar]
+    type t = Q.t [@@deriving compare, sexp_grammar]
+
+    let hash (t : t) = Hashtbl.hash t
+    let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
+    let equal = Q.equal_which_treats_nan_differently_from_the_exposed_equal
 
     let sexp_of_t t =
       let open Core in
@@ -465,8 +485,6 @@ module Stable = struct
       type t = Q.t
       type target = Bin_rep.t
 
-      let equal = Q.equal
-
       (* For testing *)
       let tag_variants = Tag.Variants.descriptions
       let bin_rep_variants = Bin_rep.Variants.descriptions
@@ -498,7 +516,7 @@ module Stable = struct
          but we want to be conservative with existing 32bits users who might not be able
          to read large ints.  *)
       let to_binable t =
-        if equal t Q.zero
+        if Q.equal_which_treats_nan_differently_from_the_exposed_equal t Q.zero
         then Bin_rep.Zero
         else (
           let num = t.num in
@@ -558,7 +576,11 @@ module Stable = struct
       ;;
     end
 
-    type t = Q.t [@@deriving compare, equal, hash]
+    type t = Q.t [@@deriving compare, sexp_grammar]
+
+    let hash (t : t) = Hashtbl.hash t
+    let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
+    let equal = Q.equal_which_treats_nan_differently_from_the_exposed_equal
 
     include Binable.Of_binable.V1 [@alert "-legacy"] (Bin_rep) (Bin_rep_conversion)
     module For_testing = Bin_rep_conversion
@@ -679,8 +701,6 @@ module Stable = struct
       type t = Q.t
       type target = Bin_rep.t
 
-      let equal = Q.equal
-
       let z_of_int63 =
         match Sys.word_size_in_bits with
         | 64 -> fun x -> Z.of_int (Core.Int63.to_int_exn x)
@@ -725,7 +745,7 @@ module Stable = struct
       let fits_int63 x = Z.leq int63_min_value x && Z.leq x int63_max_value
 
       let to_binable t =
-        if equal t Q.zero
+        if Q.equal_which_treats_nan_differently_from_the_exposed_equal t Q.zero
         then Bin_rep.Zero
         else (
           let num = t.num in
@@ -796,7 +816,11 @@ module Stable = struct
       ;;
     end
 
-    type t = Q.t [@@deriving compare, equal, hash]
+    type t = Q.t [@@deriving compare, sexp_grammar]
+
+    let hash (t : t) = Hashtbl.hash t
+    let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
+    let equal = Q.equal_which_treats_nan_differently_from_the_exposed_equal
 
     include Binable.Of_binable.V1 [@alert "-legacy"] (Bin_rep) (Bin_rep_conversion)
     module For_testing = Bin_rep_conversion
@@ -874,10 +898,20 @@ module Stable = struct
 end
 
 open! Core
-module Unstable = Stable.Current
+
+module Unstable = struct
+  include Stable.Current
+  include (Q : Ppx_hash_lib.Hashable.S with type t := t)
+end
+
 include Q
 include Comparable.Make_binable (Unstable)
 
+let compare__local = compare
+
+(* [equal__local] is defined this way to ensure it agrees with the [equal] in scope from
+   [Comparable.Make_binable], rather than the IEEE-float-style [equal] from [Zarith.Q]. *)
+let equal__local = [%compare_local.equal: t]
 let t_of_sexp = Unstable.t_of_sexp
 let sexp_of_t = Unstable.sexp_of_t
 
