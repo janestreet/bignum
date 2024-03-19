@@ -344,7 +344,8 @@ let%expect_test "Monitor value changes to understand how this may affect benches
     0.0105
     -316673.67291835
     3423.123456789
-    -3423.1234567891 |}];
+    -3423.1234567891
+    |}];
   List.iter ~f:as_sexp numbers_scientific;
   [%expect
     {|
@@ -390,7 +391,8 @@ let%expect_test "Monitor value changes to understand how this may affect benches
     351244299794558383000000000000000000000000000000000000000000000000000000
     0.000000000000000046462236999917593
     0.00000000000000771057505458522988
-    0.00000000048489280022172023 |}];
+    0.00000000048489280022172023
+    |}];
   List.iter ~f:(fun t -> print_endline (Bignum.to_string_hum t)) numbers_fraction;
   [%expect
     {|
@@ -436,7 +438,8 @@ let%expect_test "Monitor value changes to understand how this may affect benches
     4.454212203
     -9.718448072
     8.895616416
-    4.08667881 |}];
+    4.08667881
+    |}];
   List.iter ~f:as_sexp numbers_fraction;
   [%expect
     {|
@@ -482,5 +485,6 @@ let%expect_test "Monitor value changes to understand how this may affect benches
     (4.454212202 + 481398817285187/593233919392756500000000)
     (-9.718448072 + -140193020278287/792521629763607125000000)
     (8.895616416 + 14007839572177/50813730683605343750000)
-    (4.086678809 + 437398795887607/738811747524977000000000) |}]
+    (4.086678809 + 437398795887607/738811747524977000000000)
+    |}]
 ;;
