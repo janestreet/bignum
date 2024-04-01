@@ -31,6 +31,8 @@ val thousandth : t
 val millionth : t
 val billionth : t
 val trillionth : t
+val infinity : t
+val neg_infinity : t
 val ( + ) : t -> t -> t
 val ( - ) : t -> t -> t
 
