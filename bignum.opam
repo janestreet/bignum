@@ -16,7 +16,7 @@ depends: [
   "splittable_random"
   "typerep"
   "zarith_stubs_js"
-  "dune"              {>= "2.0.0"}
+  "dune"              {>= "3.11.0"}
   "num"
   "zarith"            {>= "1.11"}
 ]
