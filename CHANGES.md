@@ -1,3 +1,13 @@
+## Release v0.17.0
+- Added `local_`-mode functions `compare ~localize`, `equal ~localize`, and `globalize` derivations
+- Added `infinity` and `neg_infinity` to `Bignum`
+- Functionality extensions for rounding: `round`, `iround`, `round_as_bigint`,
+  `iround_exn`, `round_as_bigint_exn`, and `round_decimal` functions now support `Bankers`
+  rounding direction
+- Changes to `Stable` and `Unstable` modules:
+  - Removed automatic `equal` derivation from `Stable.t` and `Unstable.t`
+  - Added custom `equal` functions to `Stable` and `Unstable` modules that adhere to IEEE float semantics, treating `nan` as not equal to `nan`
+
 ## Release v0.16.0
 
 - `Big_int`
