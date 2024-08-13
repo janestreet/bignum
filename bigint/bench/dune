@@ -1,5 +1,5 @@
 (library
  (name bigint_benchmarks)
- (libraries core bigint core_kernel.iobuf)
+ (libraries core bigint core_kernel.iobuf num)
  (preprocess
   (pps ppx_jane)))

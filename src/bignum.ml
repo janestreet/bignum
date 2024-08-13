@@ -1275,11 +1275,11 @@ let quickcheck_shrinker = For_quickcheck.quickcheck_shrinker
 
 module _ : sig end = struct
   include Pretty_printer.Register (struct
-    include Unstable
+      include Unstable
 
-    let module_name = "Bignum"
-    let to_string t = Sexp.to_string (sexp_of_t t)
-  end)
+      let module_name = "Bignum"
+      let to_string t = Sexp.to_string (sexp_of_t t)
+    end)
 end
 
 let of_float = of_float_dyadic

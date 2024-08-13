@@ -5,7 +5,7 @@ open Bignum.For_testing
 
 let%expect_test "Bignum.abs" =
   let test t =
-    let t' = require_no_allocation [%here] (fun () -> abs t) in
+    let t' = require_no_allocation (fun () -> abs t) in
     [%test_result: t] ~expect:t t'
   in
   test hundred;
@@ -46,7 +46,7 @@ let compare_float_and_bignum_repr ~include_scientific_notation x =
 ;;
 
 let%expect_test "Bignum.sexp_of_t matches Float.to_string when it can" =
-  require_does_not_raise [%here] (fun () ->
+  require_does_not_raise (fun () ->
     Quickcheck.test ~sexp_of:[%sexp_of: float] Float.gen_finite ~f:(fun x ->
       compare_float_and_bignum_repr ~include_scientific_notation:false x));
   [%expect {| |}]
@@ -76,14 +76,14 @@ let compare_floats ~of_float x =
 ;;
 
 let%expect_test "roundtrip: f |> Bignum.of_float_decimal |> Bignum.to_float" =
-  require_does_not_raise [%here] (fun () ->
+  require_does_not_raise (fun () ->
     Quickcheck.test ~sexp_of:[%sexp_of: float] Float.quickcheck_generator ~f:(fun x ->
       compare_floats ~of_float:Bignum.of_float_decimal x));
   [%expect {| |}]
 ;;
 
 let%expect_test "Subnormals are handled correctly by [Zarith.Q.to_float]" =
-  require_does_not_raise [%here] (fun () ->
+  require_does_not_raise (fun () ->
     let x = 7.56181796669062E-309 in
     let x' = x |> Bignum.of_float_decimal |> Bignum.to_float in
     if not (Float.( = ) x x') then raise_s [%message "mismatch" (x : float) (x' : float)]);
@@ -91,14 +91,14 @@ let%expect_test "Subnormals are handled correctly by [Zarith.Q.to_float]" =
 ;;
 
 let%expect_test "roundtrip: f |> Bignum.of_float_dyadic |> Bignum.to_float" =
-  require_does_not_raise [%here] (fun () ->
+  require_does_not_raise (fun () ->
     Quickcheck.test ~sexp_of:[%sexp_of: float] Float.quickcheck_generator ~f:(fun x ->
       compare_floats ~of_float:Bignum.of_float_dyadic x));
   [%expect {| |}]
 ;;
 
 let%expect_test "to_string_accurate |> of_string" =
-  require_does_not_raise [%here] (fun () ->
+  require_does_not_raise (fun () ->
     Quickcheck.test ~sexp_of:[%sexp_of: Bignum.t] Bignum.quickcheck_generator ~f:(fun x ->
       [%test_result: Bignum.t]
         ~expect:x
@@ -107,7 +107,7 @@ let%expect_test "to_string_accurate |> of_string" =
 ;;
 
 let%expect_test "to_string_accurate matches sexp_of_t" =
-  require_does_not_raise [%here] (fun () ->
+  require_does_not_raise (fun () ->
     Quickcheck.test ~sexp_of:[%sexp_of: Bignum.t] Bignum.quickcheck_generator ~f:(fun x ->
       [%test_result: string]
         ~expect:(Bignum.to_string_accurate x)
@@ -116,7 +116,7 @@ let%expect_test "to_string_accurate matches sexp_of_t" =
 ;;
 
 let%expect_test "to_string_hum |> of_string" =
-  require_does_not_raise [%here] (fun () ->
+  require_does_not_raise (fun () ->
     Quickcheck.test ~sexp_of:[%sexp_of: Bignum.t] Bignum.quickcheck_generator ~f:(fun x ->
       let decimals = 9 in
       let dx = Bignum.to_string_hum ~decimals x |> Bignum.of_string in
@@ -132,7 +132,7 @@ let%expect_test "to_string_hum |> of_string" =
 ;;
 
 let%expect_test ("Float.to_string_hum matches Bignum.to_string_hum" [@tags "no-js"]) =
-  require_does_not_raise [%here] (fun () ->
+  require_does_not_raise (fun () ->
     let delimiter = '_'
     and decimals = 7 in
     Quickcheck.test ~sexp_of:[%sexp_of: float] Float.gen_without_nan ~f:(fun x ->
@@ -485,9 +485,9 @@ let%test_unit "of_string matches Float.of_string" =
     ; "125e-3"
     ]
     ~f:(fun s ->
-    as_float s;
-    as_float ("+" ^ s);
-    as_float ("-" ^ s))
+      as_float s;
+      as_float ("+" ^ s);
+      as_float ("-" ^ s))
 ;;
 
 let minus_one = of_int (-1)
@@ -715,8 +715,8 @@ let%test_module _ =
         let buf_as_bytes =
           String.to_list_rev buf
           |> List.rev_map ~f:(function
-               | '0' .. '9' as c -> String.make 1 c
-               | x -> sprintf "\\%03i" (Char.to_int x))
+            | '0' .. '9' as c -> String.make 1 c
+            | x -> sprintf "\\%03i" (Char.to_int x))
           |> String.concat
         in
         printf
@@ -786,7 +786,7 @@ let%test_module _ =
         |}]
     ;;
 
-    let%expect_test ("bin_io serialization V2 (javascript)" [@tags "js-only"]) =
+    let%expect_test ("bin_io serialization V2 (javascript)" [@tags "js-only", "no-wasm"]) =
       bin_io_tests (module V2);
       [%expect
         {|
@@ -815,8 +815,37 @@ let%test_module _ =
         |}]
     ;;
 
+    let%expect_test ("bin_io serialization V2 (wasm)" [@tags "wasm-only"]) =
+      bin_io_tests (module V2);
+      [%expect
+        {|
+                           0 -> ( 1) \000
+                           1 -> ( 2) \001\001
+                          -1 -> ( 3) \001\255\255
+                   100000001 -> ( 6) \001\253\001\225\245\005
+                   1000000.1 -> ( 6) \002\253\129\150\152\000
+                   100000.01 -> ( 6) \003\253\129\150\152\000
+                   10000.001 -> ( 6) \004\253\129\150\152\000
+                   1000.0001 -> ( 6) \005\253\129\150\152\000
+                   100.00001 -> ( 6) \006\253\129\150\152\000
+                   10.000001 -> ( 6) \007\253\129\150\152\000
+                   1.0000001 -> ( 6) \008\253\129\150\152\000
+                  0.10000001 -> ( 6) \009\253\129\150\152\000
+                 0.010000001 -> (11) \010\253\129\150\152\000\253\000\202\154\059
+                0.0010000001 -> (22) \011\02010000001\04710000000000
+              10000000000000 -> (16) \011\01410000000000000
+             -10000000000000 -> (17) \011\015\04510000000000000
+        12345678901234567.12345678901234567 -> (55) \01151234567890123456712345678901234567\047100000000000000000
+               1099511627775 -> (15) \011\0131099511627775
+                  1073741823 -> ( 6) \001\253\255\255\255\063
+                 -1073741824 -> ( 6) \001\253\000\000\000\192
+                  1073741824 -> (12) \011\0101073741824
+                 -1073741825 -> (13) \011\011\0451073741825
+        |}]
+    ;;
+
     let%expect_test "bin_io de-serialization V2" =
-      (* Some bignums will have two bin_io representation depending on where their
+      (* Some bignums will have two bin_io representation depending on where they
          were serialized.  Make sure we're able to parse things back regardless of the
          architecture. *)
       let all =
@@ -830,6 +859,8 @@ let%test_module _ =
           , [ "\011\015\04510000000000000"; "\001\252\000\096\141\177\231\246\255\255" ] )
         ; ( "1099511627775"
           , [ "\011\0131099511627775"; "\001\252\255\255\255\255\255\000\000\000" ] )
+        ; "1073741824", [ "\001\253\000\000\000\064"; "\011\0101073741824" ]
+        ; "-1073741825", [ "\001\253\255\255\255\191"; "\011\011\0451073741825" ]
         ]
       in
       let module M = V2 in
@@ -1097,6 +1128,15 @@ let%test_module "round" =
         false
       with
       | _ -> true
+    ;;
+
+    let%test_unit _ =
+      Quickcheck.test Bignum.gen_finite ~sexp_of:Bignum.sexp_of_t ~f:(fun bignum ->
+        for digits = 0 to 10 do
+          [%test_result: Bignum.t]
+            ~expect:(Bignum.round_decimal_to_nearest_half_to_even ~digits bignum)
+            (Bignum.round_decimal ~dir:`Bankers ~digits bignum)
+        done)
     ;;
 
     let dir_to_string = function

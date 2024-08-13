@@ -102,7 +102,13 @@ val round_decimal
   -> t
   -> t
 
+(** For non-negative [digits], [round_decimal_to_nearest_half_to_even ~digits t] is
+    equivalent to, but somewhat more efficient than, [round_decimal ~dir:`Bankers ~digits
+    t].
+
+    @param digits must be non-negative. *)
 val round_decimal_to_nearest_half_to_even : digits:int -> t -> t
+
 val to_float : t -> float
 
 (** Accurate if possible.  If this number is not representable as a finite decimal
@@ -204,7 +210,7 @@ val of_float_decimal : float -> t
 val of_float_dyadic : float -> t
 
 val of_float : float -> t
-  [@@deprecated "[since 2017-03]: Use [of_float_decimal] or [of_float_dyadic]"]
+[@@deprecated "[since 2017-03]: Use [of_float_decimal] or [of_float_dyadic]"]
 
 (** Rounds toward zero. [None] if the conversion would overflow *)
 val to_int : t -> int option
@@ -353,10 +359,10 @@ module O : sig
 end
 
 val to_string : t -> string
-  [@@deprecated "[since 2018-02]: Use [to_string_hum] or another [to_string_*] function"]
+[@@deprecated "[since 2018-02]: Use [to_string_hum] or another [to_string_*] function"]
 
 val pp : Format.formatter -> t -> unit
-  [@@deprecated "[since 2018-02]: Use [pp_hum] or [pp_accurate]"]
+[@@deprecated "[since 2018-02]: Use [pp_hum] or [pp_accurate]"]
 
 module For_testing : sig
   val of_string_internal : string -> t
@@ -368,22 +374,22 @@ module For_testing : sig
 end
 
 val bin_size_t : t Bin_prot.Size.sizer
-  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
 
 val bin_write_t : t Bin_prot.Write.writer
-  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
 
 val bin_read_t : t Bin_prot.Read.reader
-  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
 
-val __bin_read_t__ : (int -> t) Bin_prot.Read.reader
-  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+val __bin_read_t__ : t Bin_prot.Read.vtag_reader
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
 
 val bin_writer_t : t Bin_prot.Type_class.writer
-  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
 
 val bin_reader_t : t Bin_prot.Type_class.reader
-  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
 
 val bin_t : t Bin_prot.Type_class.t
-  [@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
+[@@deprecated "[since 2019-10] use module V2 or Unstable instead"]
