@@ -211,7 +211,7 @@ module Unstable = struct
   let hash = Z.hash
   let compare = Z.compare
 
-  external compare__local : t -> t -> int = "ml_z_compare"
+  external compare__local : local_ t -> local_ t -> int = "ml_z_compare"
 
   let ( - ) = Z.( - )
   let ( + ) = Z.( + )
@@ -225,7 +225,7 @@ module Unstable = struct
   let pred = Z.pred
   let equal = Z.equal
 
-  external equal__local : t -> t -> bool = "ml_z_equal"
+  external equal__local : local_ t -> local_ t -> bool = "ml_z_equal"
 
   let ( = ) = Z.equal
   let ( < ) = Z.lt
@@ -252,8 +252,8 @@ module Unstable = struct
   let of_int64 = Z.of_int64
   let of_nativeint = Z.of_nativeint
 
-  external of_float_unchecked : float -> t = "ml_z_of_float"
-  external of_float : float -> t = "ml_z_of_float"
+  external of_float_unchecked : local_ float -> t = "ml_z_of_float"
+  external of_float : local_ float -> t = "ml_z_of_float"
 
   let of_int_exn = of_int
   let of_int32_exn = of_int32

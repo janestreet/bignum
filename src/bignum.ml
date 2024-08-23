@@ -35,12 +35,10 @@ module Q = struct
   open (Int : Interfaces.Infix_comparators with type t := int)
 
   type t = Zarith.Q.t =
-    { num : Z.t
-    ; den : Z.t
+    { global_ num : Z.t
+    ; global_ den : Z.t
     }
-  [@@deriving hash]
-
-  let globalize x = x
+  [@@deriving globalize, hash]
 
   (** Unlike [%compare.equal], which is what actually gets exposed as [equal] due to the
       later [Comparable.Make_binable], this [equal] follows IEEE float semantics: [undef]
@@ -907,7 +905,7 @@ end
 include Q
 include Comparable.Make_binable (Unstable)
 
-let compare__local = compare
+let compare__local = [%compare_local: t]
 
 (* [equal__local] is defined this way to ensure it agrees with the [equal] in scope from
    [Comparable.Make_binable], rather than the IEEE-float-style [equal] from [Zarith.Q]. *)
