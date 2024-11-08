@@ -229,90 +229,88 @@ let%expect_test ("to_string_hum, tie resolved differently, js" [@tags "js-only"]
   [%expect {| 1.3 |}]
 ;;
 
-let%test_module "Bignum.gen" =
-  (module struct
-    let sexp_of = Bignum.sexp_of_t
-    let compare = Bignum.compare
+module%test [@name "Bignum.gen"] _ = struct
+  let sexp_of = Bignum.sexp_of_t
+  let compare = Bignum.compare
 
-    let%test_unit _ =
-      Quickcheck.test_distinct_values
-        Bignum.quickcheck_generator
-        ~sexp_of
-        ~compare
-        ~trials:1_000
-        ~distinct_values:500
-    ;;
+  let%test_unit _ =
+    Quickcheck.test_distinct_values
+      Bignum.quickcheck_generator
+      ~sexp_of
+      ~compare
+      ~trials:1_000
+      ~distinct_values:500
+  ;;
 
-    let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
-        Bignum.equal bignum Bignum.zero)
-    ;;
+  let%test_unit _ =
+    Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
+      Bignum.equal bignum Bignum.zero)
+  ;;
 
-    let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
-        Bignum.equal bignum Bignum.one)
-    ;;
+  let%test_unit _ =
+    Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
+      Bignum.equal bignum Bignum.one)
+  ;;
 
-    let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
-        Bignum.equal bignum (Bignum.neg Bignum.one))
-    ;;
+  let%test_unit _ =
+    Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
+      Bignum.equal bignum (Bignum.neg Bignum.one))
+  ;;
 
-    let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
-        Bignum.( > ) bignum Bignum.one
-        && Option.is_some (Bignum.to_int bignum)
-        && Bignum.equal bignum (Bignum.of_int (Bignum.to_int_exn bignum)))
-    ;;
+  let%test_unit _ =
+    Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
+      Bignum.( > ) bignum Bignum.one
+      && Option.is_some (Bignum.to_int bignum)
+      && Bignum.equal bignum (Bignum.of_int (Bignum.to_int_exn bignum)))
+  ;;
 
-    let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
-        Bignum.( < ) bignum (Bignum.neg Bignum.one)
-        && Option.is_some (Bignum.to_int bignum)
-        && Bignum.equal bignum (Bignum.of_int (Bignum.to_int_exn bignum)))
-    ;;
+  let%test_unit _ =
+    Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
+      Bignum.( < ) bignum (Bignum.neg Bignum.one)
+      && Option.is_some (Bignum.to_int bignum)
+      && Bignum.equal bignum (Bignum.of_int (Bignum.to_int_exn bignum)))
+  ;;
 
-    let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
-        Bignum.( > ) bignum Bignum.zero
-        && Bigint.equal (Bignum.den_as_bigint bignum) Bigint.one
-        && Option.is_none (Bigint.to_int (Bignum.num_as_bigint bignum)))
-    ;;
+  let%test_unit _ =
+    Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
+      Bignum.( > ) bignum Bignum.zero
+      && Bigint.equal (Bignum.den_as_bigint bignum) Bigint.one
+      && Option.is_none (Bigint.to_int (Bignum.num_as_bigint bignum)))
+  ;;
 
-    let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
-        Bignum.( < ) bignum Bignum.zero
-        && Bigint.equal (Bignum.den_as_bigint bignum) Bigint.one
-        && Option.is_none (Bigint.to_int (Bignum.num_as_bigint bignum)))
-    ;;
+  let%test_unit _ =
+    Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
+      Bignum.( < ) bignum Bignum.zero
+      && Bigint.equal (Bignum.den_as_bigint bignum) Bigint.one
+      && Option.is_none (Bigint.to_int (Bignum.num_as_bigint bignum)))
+  ;;
 
-    let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
-        Bignum.( > ) bignum Bignum.zero
-        && Option.is_none (Bigint.to_int (Bignum.num_as_bigint bignum))
-        && Option.is_none (Bigint.to_int (Bignum.den_as_bigint bignum)))
-    ;;
+  let%test_unit _ =
+    Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
+      Bignum.( > ) bignum Bignum.zero
+      && Option.is_none (Bigint.to_int (Bignum.num_as_bigint bignum))
+      && Option.is_none (Bigint.to_int (Bignum.den_as_bigint bignum)))
+  ;;
 
-    let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
-        Bignum.( < ) bignum Bignum.zero
-        && Option.is_none (Bigint.to_int (Bignum.num_as_bigint bignum))
-        && Option.is_none (Bigint.to_int (Bignum.den_as_bigint bignum)))
-    ;;
+  let%test_unit _ =
+    Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
+      Bignum.( < ) bignum Bignum.zero
+      && Option.is_none (Bigint.to_int (Bignum.num_as_bigint bignum))
+      && Option.is_none (Bigint.to_int (Bignum.den_as_bigint bignum)))
+  ;;
 
-    let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
-        let float = Bignum.to_float bignum in
-        Float.( > ) float 0. && Float.( < ) float Float.epsilon_float)
-    ;;
+  let%test_unit _ =
+    Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
+      let float = Bignum.to_float bignum in
+      Float.( > ) float 0. && Float.( < ) float Float.epsilon_float)
+  ;;
 
-    let%test_unit _ =
-      Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
-        let float = Bignum.to_float bignum in
-        Float.( < ) float 0. && Float.( > ) float (-.Float.epsilon_float))
-    ;;
-  end)
-;;
+  let%test_unit _ =
+    Quickcheck.test_can_generate ~sexp_of Bignum.quickcheck_generator ~f:(fun bignum ->
+      let float = Bignum.to_float bignum in
+      Float.( < ) float 0. && Float.( > ) float (-.Float.epsilon_float))
+  ;;
+end
 
 let%test_unit "Bignum.gen_uniform_excl" =
   Quickcheck.test
@@ -518,400 +516,394 @@ let%expect_test "to_float on degenerated cases" =
   [%expect {| NAN |}]
 ;;
 
-let%test_module _ =
-  (module struct
-    open Bignum.Stable.V1.For_testing
+module%test _ = struct
+  open Bignum.Stable.V1.For_testing
 
-    let%test _ = equal (of_binable (to_binable nan)) nan
-    let%test _ = equal (of_binable (to_binable infinity)) infinity
-    let%test _ = equal (of_binable (to_binable neg_infinity)) neg_infinity
-  end)
-;;
+  let%test _ = equal (of_binable (to_binable nan)) nan
+  let%test _ = equal (of_binable (to_binable infinity)) infinity
+  let%test _ = equal (of_binable (to_binable neg_infinity)) neg_infinity
+end
 
-let%test_module _ =
-  (module struct
-    open Bignum.Stable.V2.For_testing
+module%test _ = struct
+  open Bignum.Stable.V2.For_testing
 
-    let%test _ = equal (of_binable (to_binable nan)) nan
-    let%test _ = equal (of_binable (to_binable infinity)) infinity
-    let%test _ = equal (of_binable (to_binable neg_infinity)) neg_infinity
-  end)
-;;
+  let%test _ = equal (of_binable (to_binable nan)) nan
+  let%test _ = equal (of_binable (to_binable infinity)) infinity
+  let%test _ = equal (of_binable (to_binable neg_infinity)) neg_infinity
+end
 
-let%test_module _ =
-  (module struct
-    open! Core
-    module Current = Bignum
-    open Stable
-    open Extra_constants
+module%test _ = struct
+  open! Core
+  module Current = Bignum
+  open Stable
+  open Extra_constants
 
-    let buf = Bigstring.create 256
+  let buf = Bigstring.create 256
 
-    let roundtrip b =
-      for pos = 0 to 17 do
-        let (_ : int) = V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
-        let result1 = V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref pos) in
-        let (_ : int) = V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
-        let result2 = V2.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref pos) in
-        [%test_eq: V1.t] b result1;
-        [%test_eq: V2.t] b result2
-      done
-    ;;
+  let roundtrip b =
+    for pos = 0 to 17 do
+      let (_ : int) = V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
+      let result1 = V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref pos) in
+      let (_ : int) = V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos b in
+      let result2 = V2.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref pos) in
+      [%test_eq: V1.t] b result1;
+      [%test_eq: V2.t] b result2
+    done
+  ;;
 
-    let test b =
-      let open Core in
-      let v1 = Bin_prot.Writer.to_string V1.bin_writer_t b |> String.length in
-      let v2 = Bin_prot.Writer.to_string V2.bin_writer_t b |> String.length in
-      (* change to true if you want to see compaction rates during testing *)
-      if false
-      then printf "%s v1: %i v2: %i\n" (V1.sexp_of_t b |> Sexp.to_string_mach) v1 v2;
-      roundtrip b
-    ;;
+  let test b =
+    let open Core in
+    let v1 = Bin_prot.Writer.to_string V1.bin_writer_t b |> String.length in
+    let v2 = Bin_prot.Writer.to_string V2.bin_writer_t b |> String.length in
+    (* change to true if you want to see compaction rates during testing *)
+    if false
+    then printf "%s v1: %i v2: %i\n" (V1.sexp_of_t b |> Sexp.to_string_mach) v1 v2;
+    roundtrip b
+  ;;
 
-    (* This checks an axiom used in the proof of [check_overflow] *)
-    let%test _ = Int.(-max_value > min_value)
+  (* This checks an axiom used in the proof of [check_overflow] *)
+  let%test _ = Int.(-max_value > min_value)
 
-    (* This contains a test for all branches.*)
-    let%test_unit _ = test Current.zero (* test for Zero *)
-    let%test_unit _ = test Current.one (* test for Int *)
-    let%test_unit _ = test Current.ten
-    let%test_unit _ = test Current.hundred
-    let%test_unit _ = test Current.thousand
-    let%test_unit _ = test Current.million
-    let%test_unit _ = test Current.billion
-    let%test_unit _ = test Current.trillion
-    let ( / ) = Current.( / )
-    let ( * ) = Current.( * )
+  (* This contains a test for all branches.*)
+  let%test_unit _ = test Current.zero (* test for Zero *)
+  let%test_unit _ = test Current.one (* test for Int *)
+  let%test_unit _ = test Current.ten
+  let%test_unit _ = test Current.hundred
+  let%test_unit _ = test Current.thousand
+  let%test_unit _ = test Current.million
+  let%test_unit _ = test Current.billion
+  let%test_unit _ = test Current.trillion
+  let ( / ) = Current.( / )
+  let ( * ) = Current.( * )
 
-    (* Test for all Over_10^i *)
-    let%test_unit _ = test (Current.one / Current.ten)
-    let%test_unit _ = test (Current.one / Current.hundred)
-    let%test_unit _ = test (Current.one / Current.thousand)
-    let%test_unit _ = test (Current.one / (Current.thousand * Current.ten))
-    let%test_unit _ = test (Current.one / (Current.thousand * Current.hundred))
-    let%test_unit _ = test (Current.one / Current.million)
-    let%test_unit _ = test (Current.one / (Current.million * Current.ten))
-    let%test_unit _ = test (Current.one / (Current.million * Current.hundred))
-    let%test_unit _ = test (Current.one / Current.billion)
-    let%test_unit _ = test (Current.one / (Current.billion * Current.ten))
-    let%test_unit _ = test (Current.one / (Current.billion * Current.hundred))
-    let%test_unit _ = test (Current.one / Current.trillion)
+  (* Test for all Over_10^i *)
+  let%test_unit _ = test (Current.one / Current.ten)
+  let%test_unit _ = test (Current.one / Current.hundred)
+  let%test_unit _ = test (Current.one / Current.thousand)
+  let%test_unit _ = test (Current.one / (Current.thousand * Current.ten))
+  let%test_unit _ = test (Current.one / (Current.thousand * Current.hundred))
+  let%test_unit _ = test (Current.one / Current.million)
+  let%test_unit _ = test (Current.one / (Current.million * Current.ten))
+  let%test_unit _ = test (Current.one / (Current.million * Current.hundred))
+  let%test_unit _ = test (Current.one / Current.billion)
+  let%test_unit _ = test (Current.one / (Current.billion * Current.ten))
+  let%test_unit _ = test (Current.one / (Current.billion * Current.hundred))
+  let%test_unit _ = test (Current.one / Current.trillion)
 
-    (* Test for Over_int *)
-    let%test_unit _ = test (Current.of_int 2 / Current.of_int 3)
+  (* Test for Over_int *)
+  let%test_unit _ = test (Current.of_int 2 / Current.of_int 3)
 
-    include struct
-      let mul_2exp t x = of_zarith_bignum (Zarith.Q.mul_2exp (to_zarith_bignum t) x)
+  include struct
+    let mul_2exp t x = of_zarith_bignum (Zarith.Q.mul_2exp (to_zarith_bignum t) x)
 
-      (* Test for overflow  : 2^62 / 25 would be Over_100(2^64) and should overflow,
+    (* Test for overflow  : 2^62 / 25 would be Over_100(2^64) and should overflow,
          and fallback on Other(2^62, 25) *)
-      let%test_unit _ = test (mul_2exp Current.one 62 / Current.of_int 25)
-      let%test_unit _ = test (mul_2exp (Current.of_int (-1)) 62 / Current.of_int 25)
+    let%test_unit _ = test (mul_2exp Current.one 62 / Current.of_int 25)
+    let%test_unit _ = test (mul_2exp (Current.of_int (-1)) 62 / Current.of_int 25)
 
-      (* This test tests for overflow in the numerator *)
-      let%test_unit _ = test (mul_2exp Current.one 65 / Current.of_int 25)
+    (* This test tests for overflow in the numerator *)
+    let%test_unit _ = test (mul_2exp Current.one 65 / Current.of_int 25)
 
-      (* This test tests for overflow in the denominator *)
-      let%test_unit _ = test (Current.one / mul_2exp Current.one 65)
-    end
+    (* This test tests for overflow in the denominator *)
+    let%test_unit _ = test (Current.one / mul_2exp Current.one 65)
+  end
 
-    (* Test for division by zero cases *)
-    let%test_unit _ = test nan
-    let%test_unit _ = test infinity
-    let%test_unit _ = test neg_infinity
+  (* Test for division by zero cases *)
+  let%test_unit _ = test nan
+  let%test_unit _ = test infinity
+  let%test_unit _ = test neg_infinity
 
-    let numbers =
-      [ "-100.00000000"
-      ; "100.00000000"
-      ; "0.00000000"
-      ; "-200.00000000"
-      ; "200.00000000"
-      ; "-300.00000000"
-      ; "300.00000000"
-      ; "-400.00000000"
-      ; "-1000.00000000"
-      ; "1000.00000000"
-      ; "-1.00000000"
-      ; "400.00000000"
-      ; "-500.00000000"
-      ; "1.00000000"
-      ; "500.00000000"
-      ; "-600.00000000"
-      ; "-2000.00000000"
-      ; "2.00000000"
-      ; "-2.00000000"
-      ; "600.00000000"
-      ; "0.20720000"
-      ; "-0.20227524"
-      ; "0.18800000"
-      ; "0.16550000"
-      ; "0.15950000"
-      ; "0.13000000"
-      ; "0.12950000"
-      ; "0.11950000"
-      ; "-0.07232871"
-      ; "0.05950000"
-      ; "-0.05424653"
-      ; "0.04600437"
-      ; "0.04600000"
-      ; "0.04050000"
-      ; "-0.03616435"
-      ; "0.03550391"
-      ; "0.03550000"
-      ; "0.02000000"
-      ; "0.01950000"
-      ; "0.01050000"
-      ; "-316673.67291835"
-      ; "217240000000.0"
-      ; "-217240000000.0"
-      ; "3423.123456789"
-      ; "-3423.1234567891"
+  let numbers =
+    [ "-100.00000000"
+    ; "100.00000000"
+    ; "0.00000000"
+    ; "-200.00000000"
+    ; "200.00000000"
+    ; "-300.00000000"
+    ; "300.00000000"
+    ; "-400.00000000"
+    ; "-1000.00000000"
+    ; "1000.00000000"
+    ; "-1.00000000"
+    ; "400.00000000"
+    ; "-500.00000000"
+    ; "1.00000000"
+    ; "500.00000000"
+    ; "-600.00000000"
+    ; "-2000.00000000"
+    ; "2.00000000"
+    ; "-2.00000000"
+    ; "600.00000000"
+    ; "0.20720000"
+    ; "-0.20227524"
+    ; "0.18800000"
+    ; "0.16550000"
+    ; "0.15950000"
+    ; "0.13000000"
+    ; "0.12950000"
+    ; "0.11950000"
+    ; "-0.07232871"
+    ; "0.05950000"
+    ; "-0.05424653"
+    ; "0.04600437"
+    ; "0.04600000"
+    ; "0.04050000"
+    ; "-0.03616435"
+    ; "0.03550391"
+    ; "0.03550000"
+    ; "0.02000000"
+    ; "0.01950000"
+    ; "0.01050000"
+    ; "-316673.67291835"
+    ; "217240000000.0"
+    ; "-217240000000.0"
+    ; "3423.123456789"
+    ; "-3423.1234567891"
+    ]
+  ;;
+
+  let%test_unit _ =
+    List.iter numbers ~f:(fun s -> test (For_testing.of_string_internal s))
+  ;;
+
+  let bin_io_tests (module M : Binable.S with type t = t) =
+    let max_int31 = 0x3fff_ffffL in
+    let min_int31 = Int64.( - ) 0x3fff_ffffL 0x7fff_ffffL in
+    let all =
+      [ "0"
+      ; "1"
+      ; "-1"
+      ; "000100000001"
+      ; "0001000000.1"
+      ; "000100000.01"
+      ; "00010000.001"
+      ; "0001000.0001"
+      ; "000100.00001"
+      ; "00010.000001"
+      ; "0001.0000001"
+      ; "000.10000001"
+      ; "00.010000001"
+      ; "0.0010000001"
+      ; "10000000000000"
+      ; "-10000000000000"
+      ; "12345678901234567.12345678901234567"
+      ; Int64.to_string 0x00ff_ffff_ffffL (* does not fit in 32bit *)
+      ; Int64.to_string max_int31
+      ; Int64.to_string min_int31
+      ; Int64.to_string Int64.(max_int31 + one) (* does not fit on 31bit integer *)
+      ; Int64.to_string Int64.(min_int31 - one) (* does not fit on 31bit integer *)
       ]
-    ;;
-
-    let%test_unit _ =
-      List.iter numbers ~f:(fun s -> test (For_testing.of_string_internal s))
-    ;;
-
-    let bin_io_tests (module M : Binable.S with type t = t) =
-      let max_int31 = 0x3fff_ffffL in
-      let min_int31 = Int64.( - ) 0x3fff_ffffL 0x7fff_ffffL in
-      let all =
-        [ "0"
-        ; "1"
-        ; "-1"
-        ; "000100000001"
-        ; "0001000000.1"
-        ; "000100000.01"
-        ; "00010000.001"
-        ; "0001000.0001"
-        ; "000100.00001"
-        ; "00010.000001"
-        ; "0001.0000001"
-        ; "000.10000001"
-        ; "00.010000001"
-        ; "0.0010000001"
-        ; "10000000000000"
-        ; "-10000000000000"
-        ; "12345678901234567.12345678901234567"
-        ; Int64.to_string 0x00ff_ffff_ffffL (* does not fit in 32bit *)
-        ; Int64.to_string max_int31
-        ; Int64.to_string min_int31
-        ; Int64.to_string Int64.(max_int31 + one) (* does not fit on 31bit integer *)
-        ; Int64.to_string Int64.(min_int31 - one) (* does not fit on 31bit integer *)
-        ]
+    in
+    let pos = 0 in
+    List.iter all ~f:(fun t ->
+      let t = For_testing.of_string_internal t in
+      let size_of_t = M.bin_size_t t in
+      assert (Int.(size_of_t + pos <= Bigstring.length buf));
+      let new_pos = M.bin_writer_t.Bin_prot.Type_class.write buf ~pos t in
+      let pos_ref = ref pos in
+      let t1 = M.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref in
+      [%test_result: V1.t] t1 ~expect:t;
+      [%test_result: int] !pos_ref ~expect:new_pos;
+      let buf = Bigstring.To_string.sub buf ~pos ~len:(Int.( - ) new_pos pos) in
+      let buf_as_bytes =
+        String.to_list_rev buf
+        |> List.rev_map ~f:(function
+          | '0' .. '9' as c -> String.make 1 c
+          | x -> sprintf "\\%03i" (Char.to_int x))
+        |> String.concat
       in
-      let pos = 0 in
-      List.iter all ~f:(fun t ->
-        let t = For_testing.of_string_internal t in
-        let size_of_t = M.bin_size_t t in
-        assert (Int.(size_of_t + pos <= Bigstring.length buf));
-        let new_pos = M.bin_writer_t.Bin_prot.Type_class.write buf ~pos t in
-        let pos_ref = ref pos in
-        let t1 = M.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref in
-        [%test_result: V1.t] t1 ~expect:t;
-        [%test_result: int] !pos_ref ~expect:new_pos;
-        let buf = Bigstring.To_string.sub buf ~pos ~len:(Int.( - ) new_pos pos) in
-        let buf_as_bytes =
-          String.to_list_rev buf
-          |> List.rev_map ~f:(function
-            | '0' .. '9' as c -> String.make 1 c
-            | x -> sprintf "\\%03i" (Char.to_int x))
-          |> String.concat
-        in
-        printf
-          "%20s -> (%2d) %s\n"
-          (Current.to_string_accurate t)
-          (String.length buf)
-          buf_as_bytes)
-    ;;
+      printf
+        "%20s -> (%2d) %s\n"
+        (Current.to_string_accurate t)
+        (String.length buf)
+        buf_as_bytes)
+  ;;
 
-    let%expect_test "bin_io serialization V1" =
-      bin_io_tests (module V1);
-      [%expect
-        {|
-                           0 -> ( 2) \0010
-                           1 -> ( 2) \0011
-                          -1 -> ( 3) \002\0451
-                   100000001 -> (10) \009100000001
-                   1000000.1 -> (12) \01110000001\04710
-                   100000.01 -> (13) \01210000001\047100
-                   10000.001 -> (14) \01310000001\0471000
-                   1000.0001 -> (15) \01410000001\04710000
-                   100.00001 -> (16) \01510000001\047100000
-                   10.000001 -> (17) \01610000001\0471000000
-                   1.0000001 -> (18) \01710000001\04710000000
-                  0.10000001 -> (19) \01810000001\047100000000
-                 0.010000001 -> (20) \01910000001\0471000000000
-                0.0010000001 -> (21) \02010000001\04710000000000
-              10000000000000 -> (15) \01410000000000000
-             -10000000000000 -> (16) \015\04510000000000000
-        12345678901234567.12345678901234567 -> (54) 51234567890123456712345678901234567\047100000000000000000
-               1099511627775 -> (14) \0131099511627775
-                  1073741823 -> (11) \0101073741823
-                 -1073741824 -> (12) \011\0451073741824
-                  1073741824 -> (11) \0101073741824
-                 -1073741825 -> (12) \011\0451073741825
-        |}]
-    ;;
+  let%expect_test "bin_io serialization V1" =
+    bin_io_tests (module V1);
+    [%expect
+      {|
+                         0 -> ( 2) \0010
+                         1 -> ( 2) \0011
+                        -1 -> ( 3) \002\0451
+                 100000001 -> (10) \009100000001
+                 1000000.1 -> (12) \01110000001\04710
+                 100000.01 -> (13) \01210000001\047100
+                 10000.001 -> (14) \01310000001\0471000
+                 1000.0001 -> (15) \01410000001\04710000
+                 100.00001 -> (16) \01510000001\047100000
+                 10.000001 -> (17) \01610000001\0471000000
+                 1.0000001 -> (18) \01710000001\04710000000
+                0.10000001 -> (19) \01810000001\047100000000
+               0.010000001 -> (20) \01910000001\0471000000000
+              0.0010000001 -> (21) \02010000001\04710000000000
+            10000000000000 -> (15) \01410000000000000
+           -10000000000000 -> (16) \015\04510000000000000
+      12345678901234567.12345678901234567 -> (54) 51234567890123456712345678901234567\047100000000000000000
+             1099511627775 -> (14) \0131099511627775
+                1073741823 -> (11) \0101073741823
+               -1073741824 -> (12) \011\0451073741824
+                1073741824 -> (11) \0101073741824
+               -1073741825 -> (12) \011\0451073741825
+      |}]
+  ;;
 
-    (* Note that the V2 serialization is architecture dependent *)
+  (* Note that the V2 serialization is architecture dependent *)
 
-    let%expect_test ("bin_io serialization V2 (64bits)" [@tags "64-bits-only"]) =
-      bin_io_tests (module V2);
-      [%expect
-        {|
-                           0 -> ( 1) \000
-                           1 -> ( 2) \001\001
-                          -1 -> ( 3) \001\255\255
-                   100000001 -> ( 6) \001\253\001\225\245\005
-                   1000000.1 -> ( 6) \002\253\129\150\152\000
-                   100000.01 -> ( 6) \003\253\129\150\152\000
-                   10000.001 -> ( 6) \004\253\129\150\152\000
-                   1000.0001 -> ( 6) \005\253\129\150\152\000
-                   100.00001 -> ( 6) \006\253\129\150\152\000
-                   10.000001 -> ( 6) \007\253\129\150\152\000
-                   1.0000001 -> ( 6) \008\253\129\150\152\000
-                  0.10000001 -> ( 6) \009\253\129\150\152\000
-                 0.010000001 -> (11) \010\253\129\150\152\000\253\000\202\154\059
-                0.0010000001 -> (15) \010\253\129\150\152\000\252\000\228\011\084\002\000\000\000
-              10000000000000 -> (10) \001\252\000\160\114\078\024\009\000\000
-             -10000000000000 -> (10) \001\252\000\096\141\177\231\246\255\255
-        12345678901234567.12345678901234567 -> (55) \01151234567890123456712345678901234567\047100000000000000000
-               1099511627775 -> (10) \001\252\255\255\255\255\255\000\000\000
-                  1073741823 -> ( 6) \001\253\255\255\255\063
-                 -1073741824 -> ( 6) \001\253\000\000\000\192
-                  1073741824 -> ( 6) \001\253\000\000\000\064
-                 -1073741825 -> ( 6) \001\253\255\255\255\191
-        |}]
-    ;;
+  let%expect_test ("bin_io serialization V2 (64bits)" [@tags "64-bits-only"]) =
+    bin_io_tests (module V2);
+    [%expect
+      {|
+                         0 -> ( 1) \000
+                         1 -> ( 2) \001\001
+                        -1 -> ( 3) \001\255\255
+                 100000001 -> ( 6) \001\253\001\225\245\005
+                 1000000.1 -> ( 6) \002\253\129\150\152\000
+                 100000.01 -> ( 6) \003\253\129\150\152\000
+                 10000.001 -> ( 6) \004\253\129\150\152\000
+                 1000.0001 -> ( 6) \005\253\129\150\152\000
+                 100.00001 -> ( 6) \006\253\129\150\152\000
+                 10.000001 -> ( 6) \007\253\129\150\152\000
+                 1.0000001 -> ( 6) \008\253\129\150\152\000
+                0.10000001 -> ( 6) \009\253\129\150\152\000
+               0.010000001 -> (11) \010\253\129\150\152\000\253\000\202\154\059
+              0.0010000001 -> (15) \010\253\129\150\152\000\252\000\228\011\084\002\000\000\000
+            10000000000000 -> (10) \001\252\000\160\114\078\024\009\000\000
+           -10000000000000 -> (10) \001\252\000\096\141\177\231\246\255\255
+      12345678901234567.12345678901234567 -> (55) \01151234567890123456712345678901234567\047100000000000000000
+             1099511627775 -> (10) \001\252\255\255\255\255\255\000\000\000
+                1073741823 -> ( 6) \001\253\255\255\255\063
+               -1073741824 -> ( 6) \001\253\000\000\000\192
+                1073741824 -> ( 6) \001\253\000\000\000\064
+               -1073741825 -> ( 6) \001\253\255\255\255\191
+      |}]
+  ;;
 
-    let%expect_test ("bin_io serialization V2 (javascript)" [@tags "js-only", "no-wasm"]) =
-      bin_io_tests (module V2);
-      [%expect
-        {|
-                           0 -> ( 1) \000
-                           1 -> ( 2) \001\001
-                          -1 -> ( 3) \001\255\255
-                   100000001 -> ( 6) \001\253\001\225\245\005
-                   1000000.1 -> ( 6) \002\253\129\150\152\000
-                   100000.01 -> ( 6) \003\253\129\150\152\000
-                   10000.001 -> ( 6) \004\253\129\150\152\000
-                   1000.0001 -> ( 6) \005\253\129\150\152\000
-                   100.00001 -> ( 6) \006\253\129\150\152\000
-                   10.000001 -> ( 6) \007\253\129\150\152\000
-                   1.0000001 -> ( 6) \008\253\129\150\152\000
-                  0.10000001 -> ( 6) \009\253\129\150\152\000
-                 0.010000001 -> (11) \010\253\129\150\152\000\253\000\202\154\059
-                0.0010000001 -> (22) \011\02010000001\04710000000000
-              10000000000000 -> (16) \011\01410000000000000
-             -10000000000000 -> (17) \011\015\04510000000000000
-        12345678901234567.12345678901234567 -> (55) \01151234567890123456712345678901234567\047100000000000000000
-               1099511627775 -> (15) \011\0131099511627775
-                  1073741823 -> ( 6) \001\253\255\255\255\063
-                 -1073741824 -> ( 6) \001\253\000\000\000\192
-                  1073741824 -> ( 6) \001\253\000\000\000\064
-                 -1073741825 -> ( 6) \001\253\255\255\255\191
-        |}]
-    ;;
+  let%expect_test ("bin_io serialization V2 (javascript)" [@tags "js-only", "no-wasm"]) =
+    bin_io_tests (module V2);
+    [%expect
+      {|
+                         0 -> ( 1) \000
+                         1 -> ( 2) \001\001
+                        -1 -> ( 3) \001\255\255
+                 100000001 -> ( 6) \001\253\001\225\245\005
+                 1000000.1 -> ( 6) \002\253\129\150\152\000
+                 100000.01 -> ( 6) \003\253\129\150\152\000
+                 10000.001 -> ( 6) \004\253\129\150\152\000
+                 1000.0001 -> ( 6) \005\253\129\150\152\000
+                 100.00001 -> ( 6) \006\253\129\150\152\000
+                 10.000001 -> ( 6) \007\253\129\150\152\000
+                 1.0000001 -> ( 6) \008\253\129\150\152\000
+                0.10000001 -> ( 6) \009\253\129\150\152\000
+               0.010000001 -> (11) \010\253\129\150\152\000\253\000\202\154\059
+              0.0010000001 -> (22) \011\02010000001\04710000000000
+            10000000000000 -> (16) \011\01410000000000000
+           -10000000000000 -> (17) \011\015\04510000000000000
+      12345678901234567.12345678901234567 -> (55) \01151234567890123456712345678901234567\047100000000000000000
+             1099511627775 -> (15) \011\0131099511627775
+                1073741823 -> ( 6) \001\253\255\255\255\063
+               -1073741824 -> ( 6) \001\253\000\000\000\192
+                1073741824 -> ( 6) \001\253\000\000\000\064
+               -1073741825 -> ( 6) \001\253\255\255\255\191
+      |}]
+  ;;
 
-    let%expect_test ("bin_io serialization V2 (wasm)" [@tags "wasm-only"]) =
-      bin_io_tests (module V2);
-      [%expect
-        {|
-                           0 -> ( 1) \000
-                           1 -> ( 2) \001\001
-                          -1 -> ( 3) \001\255\255
-                   100000001 -> ( 6) \001\253\001\225\245\005
-                   1000000.1 -> ( 6) \002\253\129\150\152\000
-                   100000.01 -> ( 6) \003\253\129\150\152\000
-                   10000.001 -> ( 6) \004\253\129\150\152\000
-                   1000.0001 -> ( 6) \005\253\129\150\152\000
-                   100.00001 -> ( 6) \006\253\129\150\152\000
-                   10.000001 -> ( 6) \007\253\129\150\152\000
-                   1.0000001 -> ( 6) \008\253\129\150\152\000
-                  0.10000001 -> ( 6) \009\253\129\150\152\000
-                 0.010000001 -> (11) \010\253\129\150\152\000\253\000\202\154\059
-                0.0010000001 -> (22) \011\02010000001\04710000000000
-              10000000000000 -> (16) \011\01410000000000000
-             -10000000000000 -> (17) \011\015\04510000000000000
-        12345678901234567.12345678901234567 -> (55) \01151234567890123456712345678901234567\047100000000000000000
-               1099511627775 -> (15) \011\0131099511627775
-                  1073741823 -> ( 6) \001\253\255\255\255\063
-                 -1073741824 -> ( 6) \001\253\000\000\000\192
-                  1073741824 -> (12) \011\0101073741824
-                 -1073741825 -> (13) \011\011\0451073741825
-        |}]
-    ;;
+  let%expect_test ("bin_io serialization V2 (wasm)" [@tags "wasm-only"]) =
+    bin_io_tests (module V2);
+    [%expect
+      {|
+                         0 -> ( 1) \000
+                         1 -> ( 2) \001\001
+                        -1 -> ( 3) \001\255\255
+                 100000001 -> ( 6) \001\253\001\225\245\005
+                 1000000.1 -> ( 6) \002\253\129\150\152\000
+                 100000.01 -> ( 6) \003\253\129\150\152\000
+                 10000.001 -> ( 6) \004\253\129\150\152\000
+                 1000.0001 -> ( 6) \005\253\129\150\152\000
+                 100.00001 -> ( 6) \006\253\129\150\152\000
+                 10.000001 -> ( 6) \007\253\129\150\152\000
+                 1.0000001 -> ( 6) \008\253\129\150\152\000
+                0.10000001 -> ( 6) \009\253\129\150\152\000
+               0.010000001 -> (11) \010\253\129\150\152\000\253\000\202\154\059
+              0.0010000001 -> (22) \011\02010000001\04710000000000
+            10000000000000 -> (16) \011\01410000000000000
+           -10000000000000 -> (17) \011\015\04510000000000000
+      12345678901234567.12345678901234567 -> (55) \01151234567890123456712345678901234567\047100000000000000000
+             1099511627775 -> (15) \011\0131099511627775
+                1073741823 -> ( 6) \001\253\255\255\255\063
+               -1073741824 -> ( 6) \001\253\000\000\000\192
+                1073741824 -> (12) \011\0101073741824
+               -1073741825 -> (13) \011\011\0451073741825
+      |}]
+  ;;
 
-    let%expect_test "bin_io de-serialization V2" =
-      (* Some bignums will have two bin_io representation depending on where they
+  let%expect_test "bin_io de-serialization V2" =
+    (* Some bignums will have two bin_io representation depending on where they
          were serialized.  Make sure we're able to parse things back regardless of the
          architecture. *)
-      let all =
-        [ ( "0.0010000001"
-          , [ "\011\02010000001\04710000000000"
-            ; "\010\253\129\150\152\000\252\000\228\011\084\002\000\000\000"
-            ] )
-        ; ( "10000000000000"
-          , [ "\011\01410000000000000"; "\001\252\000\160\114\078\024\009\000\000" ] )
-        ; ( "-10000000000000"
-          , [ "\011\015\04510000000000000"; "\001\252\000\096\141\177\231\246\255\255" ] )
-        ; ( "1099511627775"
-          , [ "\011\0131099511627775"; "\001\252\255\255\255\255\255\000\000\000" ] )
-        ; "1073741824", [ "\001\253\000\000\000\064"; "\011\0101073741824" ]
-        ; "-1073741825", [ "\001\253\255\255\255\191"; "\011\011\0451073741825" ]
-        ]
-      in
-      let module M = V2 in
-      List.iter all ~f:(fun (t, l) ->
-        let t = For_testing.of_string_internal t in
-        List.iter l ~f:(fun bin ->
-          let buf = Bigstring.of_string bin in
-          let pos_ref = ref 0 in
-          let t1 = M.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref in
-          [%test_result: V1.t] t1 ~expect:t))
-    ;;
+    let all =
+      [ ( "0.0010000001"
+        , [ "\011\02010000001\04710000000000"
+          ; "\010\253\129\150\152\000\252\000\228\011\084\002\000\000\000"
+          ] )
+      ; ( "10000000000000"
+        , [ "\011\01410000000000000"; "\001\252\000\160\114\078\024\009\000\000" ] )
+      ; ( "-10000000000000"
+        , [ "\011\015\04510000000000000"; "\001\252\000\096\141\177\231\246\255\255" ] )
+      ; ( "1099511627775"
+        , [ "\011\0131099511627775"; "\001\252\255\255\255\255\255\000\000\000" ] )
+      ; "1073741824", [ "\001\253\000\000\000\064"; "\011\0101073741824" ]
+      ; "-1073741825", [ "\001\253\255\255\255\191"; "\011\011\0451073741825" ]
+      ]
+    in
+    let module M = V2 in
+    List.iter all ~f:(fun (t, l) ->
+      let t = For_testing.of_string_internal t in
+      List.iter l ~f:(fun bin ->
+        let buf = Bigstring.of_string bin in
+        let pos_ref = ref 0 in
+        let t1 = M.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref in
+        [%test_result: V1.t] t1 ~expect:t))
+  ;;
 
-    let%expect_test "bin_io serialization V3" =
-      bin_io_tests (module V3);
-      [%expect
-        {|
-                           0 -> ( 1) \000
-                           1 -> ( 2) \001\001
-                          -1 -> ( 3) \001\255\255
-                   100000001 -> ( 6) \001\253\001\225\245\005
-                   1000000.1 -> ( 6) \002\253\129\150\152\000
-                   100000.01 -> ( 6) \003\253\129\150\152\000
-                   10000.001 -> ( 6) \004\253\129\150\152\000
-                   1000.0001 -> ( 6) \005\253\129\150\152\000
-                   100.00001 -> ( 6) \006\253\129\150\152\000
-                   10.000001 -> ( 6) \007\253\129\150\152\000
-                   1.0000001 -> ( 6) \008\253\129\150\152\000
-                  0.10000001 -> ( 6) \009\253\129\150\152\000
-                 0.010000001 -> (11) \010\253\129\150\152\000\253\000\202\154\059
-                0.0010000001 -> (15) \010\253\129\150\152\000\252\000\228\011\084\002\000\000\000
-              10000000000000 -> (10) \001\252\000\160\114\078\024\009\000\000
-             -10000000000000 -> (10) \001\252\000\096\141\177\231\246\255\255
-        12345678901234567.12345678901234567 -> (25) \011\028\135\0751\031\227\252\113\2212\151\255\111\222\060\016\000\000\138\093\120\069\099\001
-               1099511627775 -> (10) \001\252\255\255\255\255\255\000\000\000
-                  1073741823 -> ( 6) \001\253\255\255\255\063
-                 -1073741824 -> ( 6) \001\253\000\000\000\192
-                  1073741824 -> ( 6) \001\253\000\000\000\064
-                 -1073741825 -> ( 6) \001\253\255\255\255\191
-        |}]
-    ;;
+  let%expect_test "bin_io serialization V3" =
+    bin_io_tests (module V3);
+    [%expect
+      {|
+                         0 -> ( 1) \000
+                         1 -> ( 2) \001\001
+                        -1 -> ( 3) \001\255\255
+                 100000001 -> ( 6) \001\253\001\225\245\005
+                 1000000.1 -> ( 6) \002\253\129\150\152\000
+                 100000.01 -> ( 6) \003\253\129\150\152\000
+                 10000.001 -> ( 6) \004\253\129\150\152\000
+                 1000.0001 -> ( 6) \005\253\129\150\152\000
+                 100.00001 -> ( 6) \006\253\129\150\152\000
+                 10.000001 -> ( 6) \007\253\129\150\152\000
+                 1.0000001 -> ( 6) \008\253\129\150\152\000
+                0.10000001 -> ( 6) \009\253\129\150\152\000
+               0.010000001 -> (11) \010\253\129\150\152\000\253\000\202\154\059
+              0.0010000001 -> (15) \010\253\129\150\152\000\252\000\228\011\084\002\000\000\000
+            10000000000000 -> (10) \001\252\000\160\114\078\024\009\000\000
+           -10000000000000 -> (10) \001\252\000\096\141\177\231\246\255\255
+      12345678901234567.12345678901234567 -> (25) \011\028\135\0751\031\227\252\113\2212\151\255\111\222\060\016\000\000\138\093\120\069\099\001
+             1099511627775 -> (10) \001\252\255\255\255\255\255\000\000\000
+                1073741823 -> ( 6) \001\253\255\255\255\063
+               -1073741824 -> ( 6) \001\253\000\000\000\192
+                1073741824 -> ( 6) \001\253\000\000\000\064
+               -1073741825 -> ( 6) \001\253\255\255\255\191
+      |}]
+  ;;
 
-    let%expect_test _ =
-      print_endline [%bin_digest: V1.t];
-      [%expect {| d9a8da25d5656b016fb4dbdc2e4197fb |}];
-      print_endline [%bin_digest: V2.t];
-      [%expect {| 0a6a4507059ec4c575f2b3e75ac65c1f |}];
-      print_endline [%bin_digest: V3.t];
-      [%expect {| f358e9c3caca8a9589275ba8d8349ae8 |}]
-    ;;
-  end)
-;;
+  let%expect_test _ =
+    print_endline [%bin_digest: V1.t];
+    [%expect {| d9a8da25d5656b016fb4dbdc2e4197fb |}];
+    print_endline [%bin_digest: V2.t];
+    [%expect {| 0a6a4507059ec4c575f2b3e75ac65c1f |}];
+    print_endline [%bin_digest: V3.t];
+    [%expect {| f358e9c3caca8a9589275ba8d8349ae8 |}]
+  ;;
+end
 
 let%test _ = Int.equal (to_int_exn (of_int Int.max_value)) Int.max_value
 let%test _ = Int.equal (to_int_exn (of_int Int.min_value)) Int.min_value
@@ -1023,178 +1015,164 @@ let%test _ =
        ^ "71196477686542167660429831652624386837205668069376")
 ;;
 
-let%test_module "round" =
-  (module struct
-    let x = of_string "1.23456789"
-    let neg_x = neg x
-    let%test _ = round x = of_string "1"
-    let%test _ = round ~to_multiple_of:tenth x = of_string "1.2"
-    let%test _ = round ~to_multiple_of:hundredth x = of_string "1.23"
-    let%test _ = round ~to_multiple_of:thousandth x = of_string "1.235"
-    let%test _ = round ~to_multiple_of:millionth x = of_string "1.234568"
-    let%test _ = round neg_x = of_string "-1"
-    let%test _ = round ~to_multiple_of:tenth neg_x = of_string "-1.2"
-    let%test _ = round ~to_multiple_of:hundredth neg_x = of_string "-1.23"
-    let%test _ = round ~to_multiple_of:thousandth neg_x = of_string "-1.235"
-    let%test _ = round ~to_multiple_of:millionth neg_x = of_string "-1.234568"
-    let%test _ = round_decimal ~dir:`Nearest ~digits:0 x = of_string "1"
-    let%test _ = round_decimal ~dir:`Nearest ~digits:1 x = of_string "1.2"
-    let%test _ = round_decimal ~dir:`Nearest ~digits:2 x = of_string "1.23"
-    let%test _ = round_decimal ~dir:`Nearest ~digits:3 x = of_string "1.235"
-    let%test _ = round_decimal ~dir:`Nearest ~digits:4 x = of_string "1.2346"
-    let%test _ = round_decimal ~dir:`Nearest ~digits:0 neg_x = of_string "-1"
-    let%test _ = round_decimal ~dir:`Nearest ~digits:1 neg_x = of_string "-1.2"
-    let%test _ = round_decimal ~dir:`Nearest ~digits:2 neg_x = of_string "-1.23"
-    let%test _ = round_decimal ~dir:`Nearest ~digits:3 neg_x = of_string "-1.235"
-    let%test _ = round_decimal ~dir:`Nearest ~digits:4 neg_x = of_string "-1.2346"
-    let%test _ = round_decimal ~dir:`Up ~digits:0 x = of_string "2"
-    let%test _ = round_decimal ~dir:`Up ~digits:1 x = of_string "1.3"
-    let%test _ = round_decimal ~dir:`Up ~digits:2 x = of_string "1.24"
-    let%test _ = round_decimal ~dir:`Up ~digits:3 x = of_string "1.235"
-    let%test _ = round_decimal ~dir:`Up ~digits:4 x = of_string "1.2346"
-    let%test _ = round_decimal ~dir:`Up ~digits:0 neg_x = of_string "-1"
-    let%test _ = round_decimal ~dir:`Up ~digits:1 neg_x = of_string "-1.2"
-    let%test _ = round_decimal ~dir:`Up ~digits:2 neg_x = of_string "-1.23"
-    let%test _ = round_decimal ~dir:`Up ~digits:3 neg_x = of_string "-1.234"
-    let%test _ = round_decimal ~dir:`Up ~digits:4 neg_x = of_string "-1.2345"
-    let%test _ = round_decimal ~dir:`Down ~digits:0 x = of_string "1"
-    let%test _ = round_decimal ~dir:`Down ~digits:1 x = of_string "1.2"
-    let%test _ = round_decimal ~dir:`Down ~digits:2 x = of_string "1.23"
-    let%test _ = round_decimal ~dir:`Down ~digits:3 x = of_string "1.234"
-    let%test _ = round_decimal ~dir:`Down ~digits:4 x = of_string "1.2345"
-    let%test _ = round_decimal ~dir:`Down ~digits:0 neg_x = of_string "-2"
-    let%test _ = round_decimal ~dir:`Down ~digits:1 neg_x = of_string "-1.3"
-    let%test _ = round_decimal ~dir:`Down ~digits:2 neg_x = of_string "-1.24"
-    let%test _ = round_decimal ~dir:`Down ~digits:3 neg_x = of_string "-1.235"
-    let%test _ = round_decimal ~dir:`Down ~digits:4 neg_x = of_string "-1.2346"
-    let%test _ = round_decimal ~dir:`Zero ~digits:0 x = of_string "1"
-    let%test _ = round_decimal ~dir:`Zero ~digits:1 x = of_string "1.2"
-    let%test _ = round_decimal ~dir:`Zero ~digits:2 x = of_string "1.23"
-    let%test _ = round_decimal ~dir:`Zero ~digits:3 x = of_string "1.234"
-    let%test _ = round_decimal ~dir:`Zero ~digits:4 x = of_string "1.2345"
-    let%test _ = round_decimal ~dir:`Zero ~digits:0 neg_x = of_string "-1"
-    let%test _ = round_decimal ~dir:`Zero ~digits:1 neg_x = of_string "-1.2"
-    let%test _ = round_decimal ~dir:`Zero ~digits:2 neg_x = of_string "-1.23"
-    let%test _ = round_decimal ~dir:`Zero ~digits:3 neg_x = of_string "-1.234"
-    let%test _ = round_decimal ~dir:`Zero ~digits:4 neg_x = of_string "-1.2345"
-    let%test _ = round_decimal ~dir:`Bankers ~digits:0 x = of_string "1"
-    let%test _ = round_decimal ~dir:`Bankers ~digits:1 x = of_string "1.2"
-    let%test _ = round_decimal ~dir:`Bankers ~digits:2 x = of_string "1.23"
-    let%test _ = round_decimal ~dir:`Bankers ~digits:3 x = of_string "1.235"
-    let%test _ = round_decimal ~dir:`Bankers ~digits:4 x = of_string "1.2346"
-    let%test _ = round_decimal ~dir:`Bankers ~digits:0 neg_x = of_string "-1"
-    let%test _ = round_decimal ~dir:`Bankers ~digits:1 neg_x = of_string "-1.2"
-    let%test _ = round_decimal ~dir:`Bankers ~digits:2 neg_x = of_string "-1.23"
-    let%test _ = round_decimal ~dir:`Bankers ~digits:3 neg_x = of_string "-1.235"
-    let%test _ = round_decimal ~dir:`Bankers ~digits:4 neg_x = of_string "-1.2346"
+module%test [@name "round"] _ = struct
+  let x = of_string "1.23456789"
+  let neg_x = neg x
+  let%test _ = round x = of_string "1"
+  let%test _ = round ~to_multiple_of:tenth x = of_string "1.2"
+  let%test _ = round ~to_multiple_of:hundredth x = of_string "1.23"
+  let%test _ = round ~to_multiple_of:thousandth x = of_string "1.235"
+  let%test _ = round ~to_multiple_of:millionth x = of_string "1.234568"
+  let%test _ = round neg_x = of_string "-1"
+  let%test _ = round ~to_multiple_of:tenth neg_x = of_string "-1.2"
+  let%test _ = round ~to_multiple_of:hundredth neg_x = of_string "-1.23"
+  let%test _ = round ~to_multiple_of:thousandth neg_x = of_string "-1.235"
+  let%test _ = round ~to_multiple_of:millionth neg_x = of_string "-1.234568"
+  let%test _ = round_decimal ~dir:`Nearest ~digits:0 x = of_string "1"
+  let%test _ = round_decimal ~dir:`Nearest ~digits:1 x = of_string "1.2"
+  let%test _ = round_decimal ~dir:`Nearest ~digits:2 x = of_string "1.23"
+  let%test _ = round_decimal ~dir:`Nearest ~digits:3 x = of_string "1.235"
+  let%test _ = round_decimal ~dir:`Nearest ~digits:4 x = of_string "1.2346"
+  let%test _ = round_decimal ~dir:`Nearest ~digits:0 neg_x = of_string "-1"
+  let%test _ = round_decimal ~dir:`Nearest ~digits:1 neg_x = of_string "-1.2"
+  let%test _ = round_decimal ~dir:`Nearest ~digits:2 neg_x = of_string "-1.23"
+  let%test _ = round_decimal ~dir:`Nearest ~digits:3 neg_x = of_string "-1.235"
+  let%test _ = round_decimal ~dir:`Nearest ~digits:4 neg_x = of_string "-1.2346"
+  let%test _ = round_decimal ~dir:`Up ~digits:0 x = of_string "2"
+  let%test _ = round_decimal ~dir:`Up ~digits:1 x = of_string "1.3"
+  let%test _ = round_decimal ~dir:`Up ~digits:2 x = of_string "1.24"
+  let%test _ = round_decimal ~dir:`Up ~digits:3 x = of_string "1.235"
+  let%test _ = round_decimal ~dir:`Up ~digits:4 x = of_string "1.2346"
+  let%test _ = round_decimal ~dir:`Up ~digits:0 neg_x = of_string "-1"
+  let%test _ = round_decimal ~dir:`Up ~digits:1 neg_x = of_string "-1.2"
+  let%test _ = round_decimal ~dir:`Up ~digits:2 neg_x = of_string "-1.23"
+  let%test _ = round_decimal ~dir:`Up ~digits:3 neg_x = of_string "-1.234"
+  let%test _ = round_decimal ~dir:`Up ~digits:4 neg_x = of_string "-1.2345"
+  let%test _ = round_decimal ~dir:`Down ~digits:0 x = of_string "1"
+  let%test _ = round_decimal ~dir:`Down ~digits:1 x = of_string "1.2"
+  let%test _ = round_decimal ~dir:`Down ~digits:2 x = of_string "1.23"
+  let%test _ = round_decimal ~dir:`Down ~digits:3 x = of_string "1.234"
+  let%test _ = round_decimal ~dir:`Down ~digits:4 x = of_string "1.2345"
+  let%test _ = round_decimal ~dir:`Down ~digits:0 neg_x = of_string "-2"
+  let%test _ = round_decimal ~dir:`Down ~digits:1 neg_x = of_string "-1.3"
+  let%test _ = round_decimal ~dir:`Down ~digits:2 neg_x = of_string "-1.24"
+  let%test _ = round_decimal ~dir:`Down ~digits:3 neg_x = of_string "-1.235"
+  let%test _ = round_decimal ~dir:`Down ~digits:4 neg_x = of_string "-1.2346"
+  let%test _ = round_decimal ~dir:`Zero ~digits:0 x = of_string "1"
+  let%test _ = round_decimal ~dir:`Zero ~digits:1 x = of_string "1.2"
+  let%test _ = round_decimal ~dir:`Zero ~digits:2 x = of_string "1.23"
+  let%test _ = round_decimal ~dir:`Zero ~digits:3 x = of_string "1.234"
+  let%test _ = round_decimal ~dir:`Zero ~digits:4 x = of_string "1.2345"
+  let%test _ = round_decimal ~dir:`Zero ~digits:0 neg_x = of_string "-1"
+  let%test _ = round_decimal ~dir:`Zero ~digits:1 neg_x = of_string "-1.2"
+  let%test _ = round_decimal ~dir:`Zero ~digits:2 neg_x = of_string "-1.23"
+  let%test _ = round_decimal ~dir:`Zero ~digits:3 neg_x = of_string "-1.234"
+  let%test _ = round_decimal ~dir:`Zero ~digits:4 neg_x = of_string "-1.2345"
+  let%test _ = round_decimal ~dir:`Bankers ~digits:0 x = of_string "1"
+  let%test _ = round_decimal ~dir:`Bankers ~digits:1 x = of_string "1.2"
+  let%test _ = round_decimal ~dir:`Bankers ~digits:2 x = of_string "1.23"
+  let%test _ = round_decimal ~dir:`Bankers ~digits:3 x = of_string "1.235"
+  let%test _ = round_decimal ~dir:`Bankers ~digits:4 x = of_string "1.2346"
+  let%test _ = round_decimal ~dir:`Bankers ~digits:0 neg_x = of_string "-1"
+  let%test _ = round_decimal ~dir:`Bankers ~digits:1 neg_x = of_string "-1.2"
+  let%test _ = round_decimal ~dir:`Bankers ~digits:2 neg_x = of_string "-1.23"
+  let%test _ = round_decimal ~dir:`Bankers ~digits:3 neg_x = of_string "-1.235"
+  let%test _ = round_decimal ~dir:`Bankers ~digits:4 neg_x = of_string "-1.2346"
 
-    let%test _ =
-      round_decimal ~dir:`Bankers ~digits:1 (of_string "1.3499") = of_string "1.3"
-    ;;
+  let%test _ =
+    round_decimal ~dir:`Bankers ~digits:1 (of_string "1.3499") = of_string "1.3"
+  ;;
 
-    let%test _ =
-      round_decimal ~dir:`Bankers ~digits:1 (of_string "1.35") = of_string "1.4"
-    ;;
+  let%test _ = round_decimal ~dir:`Bankers ~digits:1 (of_string "1.35") = of_string "1.4"
+  let%test _ = round_decimal ~dir:`Bankers ~digits:1 (of_string "1.351") = of_string "1.4"
 
-    let%test _ =
-      round_decimal ~dir:`Bankers ~digits:1 (of_string "1.351") = of_string "1.4"
-    ;;
+  let%test _ =
+    round_decimal ~dir:`Bankers ~digits:1 (of_string "1.4499") = of_string "1.4"
+  ;;
 
-    let%test _ =
-      round_decimal ~dir:`Bankers ~digits:1 (of_string "1.4499") = of_string "1.4"
-    ;;
+  let%test _ = round_decimal ~dir:`Bankers ~digits:1 (of_string "1.45") = of_string "1.4"
+  let%test _ = round_decimal ~dir:`Bankers ~digits:1 (of_string "1.451") = of_string "1.5"
 
-    let%test _ =
-      round_decimal ~dir:`Bankers ~digits:1 (of_string "1.45") = of_string "1.4"
-    ;;
+  let%test _ =
+    try
+      ignore (round ~to_multiple_of:zero one : t);
+      false
+    with
+    | _ -> true
+  ;;
 
-    let%test _ =
-      round_decimal ~dir:`Bankers ~digits:1 (of_string "1.451") = of_string "1.5"
-    ;;
+  let%test _ = Option.is_none (iround ~to_multiple_of:0 one)
 
-    let%test _ =
-      try
-        ignore (round ~to_multiple_of:zero one : t);
-        false
-      with
-      | _ -> true
-    ;;
+  let%test _ =
+    try
+      ignore (iround_exn ~to_multiple_of:0 one : int);
+      false
+    with
+    | _ -> true
+  ;;
 
-    let%test _ = Option.is_none (iround ~to_multiple_of:0 one)
+  let%test_unit _ =
+    Quickcheck.test Bignum.gen_finite ~sexp_of:Bignum.sexp_of_t ~f:(fun bignum ->
+      for digits = 0 to 10 do
+        [%test_result: Bignum.t]
+          ~expect:(Bignum.round_decimal_to_nearest_half_to_even ~digits bignum)
+          (Bignum.round_decimal ~dir:`Bankers ~digits bignum)
+      done)
+  ;;
 
-    let%test _ =
-      try
-        ignore (iround_exn ~to_multiple_of:0 one : int);
-        false
-      with
-      | _ -> true
-    ;;
+  let dir_to_string = function
+    | `Up -> "up"
+    | `Down -> "down"
+    | `Nearest -> "nearest"
+    | `Zero -> "zero"
+  ;;
 
-    let%test_unit _ =
-      Quickcheck.test Bignum.gen_finite ~sexp_of:Bignum.sexp_of_t ~f:(fun bignum ->
-        for digits = 0 to 10 do
-          [%test_result: Bignum.t]
-            ~expect:(Bignum.round_decimal_to_nearest_half_to_even ~digits bignum)
-            (Bignum.round_decimal ~dir:`Bankers ~digits bignum)
-        done)
-    ;;
+  let as_float f =
+    List.iter [ `Up; `Down; `Nearest; `Zero ] ~f:(fun dir ->
+      [%test_result: float]
+        ~message:(dir_to_string dir)
+        ~expect:(Float.round ~dir f)
+        (to_float (round ~dir (of_float_dyadic f))))
+  ;;
 
-    let dir_to_string = function
-      | `Up -> "up"
-      | `Down -> "down"
-      | `Nearest -> "nearest"
-      | `Zero -> "zero"
-    ;;
+  let%test_unit _ =
+    List.iter [ 0.; 0.5; 99.5; 99.99; 1_000. ] ~f:(fun f ->
+      as_float f;
+      as_float (Float.neg f))
+  ;;
 
-    let as_float f =
+  module%test [@name "iround"] _ = struct
+    let as_int ~to_multiple_of i =
       List.iter [ `Up; `Down; `Nearest; `Zero ] ~f:(fun dir ->
-        [%test_result: float]
+        [%test_result: int]
           ~message:(dir_to_string dir)
-          ~expect:(Float.round ~dir f)
-          (to_float (round ~dir (of_float_dyadic f))))
+          ~expect:(Int.round ~dir ~to_multiple_of i)
+          (iround_exn ~dir ~to_multiple_of (of_int i)))
     ;;
 
     let%test_unit _ =
-      List.iter [ 0.; 0.5; 99.5; 99.99; 1_000. ] ~f:(fun f ->
-        as_float f;
-        as_float (Float.neg f))
+      List.iter [ 1; 327; 1_000_012 ] ~f:(fun to_multiple_of ->
+        List.iter [ 0; 1; 3315; 98_765_432 ] ~f:(fun i ->
+          as_int ~to_multiple_of i;
+          as_int ~to_multiple_of (Int.neg i)))
     ;;
 
-    let%test_module "iround" =
-      (module struct
-        let as_int ~to_multiple_of i =
-          List.iter [ `Up; `Down; `Nearest; `Zero ] ~f:(fun dir ->
-            [%test_result: int]
-              ~message:(dir_to_string dir)
-              ~expect:(Int.round ~dir ~to_multiple_of i)
-              (iround_exn ~dir ~to_multiple_of (of_int i)))
-        ;;
+    let%test_unit _ = as_int ~to_multiple_of:1 Int.max_value
+    let%test_unit _ = as_int ~to_multiple_of:1 Int.min_value
 
-        let%test_unit _ =
-          List.iter [ 1; 327; 1_000_012 ] ~f:(fun to_multiple_of ->
-            List.iter [ 0; 1; 3315; 98_765_432 ] ~f:(fun i ->
-              as_int ~to_multiple_of i;
-              as_int ~to_multiple_of (Int.neg i)))
-        ;;
-
-        let%test_unit _ = as_int ~to_multiple_of:1 Int.max_value
-        let%test_unit _ = as_int ~to_multiple_of:1 Int.min_value
-
-        let overflows t =
-          [%test_pred: int option] Option.is_none (iround t);
-          try
-            ignore (iround_exn t : int);
-            false
-          with
-          | _ -> true
-        ;;
-
-        let%test _ = overflows (of_int Int.max_value + one)
-        let%test _ = overflows (of_int Int.min_value - one)
-      end)
+    let overflows t =
+      [%test_pred: int option] Option.is_none (iround t);
+      try
+        ignore (iround_exn t : int);
+        false
+      with
+      | _ -> true
     ;;
-  end)
-;;
+
+    let%test _ = overflows (of_int Int.max_value + one)
+    let%test _ = overflows (of_int Int.min_value - one)
+  end
+end
 
 let%test "tag/binable constructors in sync v2" =
   List.for_all2_exn

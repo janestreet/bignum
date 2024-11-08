@@ -1,7 +1,8 @@
 open Core
+open Modes.Export
 module Z = Zarith.Z
 
-type t = Z.t [@@deriving typerep ~abstract]
+type t = Z.t Modes.Global.t [@@deriving typerep ~abstract]
 
 let module_name = "Bigint"
 let invariant (_ : t) = ()
@@ -9,10 +10,10 @@ let invariant (_ : t) = ()
 module Stringable_t = struct
   type nonrec t = t
 
-  let to_string = Z.to_string
+  let[@inline] to_string { global = t } = Z.to_string t
 
   let of_string_base str ~name ~of_string =
-    try of_string str with
+    try { global = of_string str } with
     | _ -> failwithf "%s.%s: invalid argument %S" name module_name str ()
   ;;
 
@@ -34,7 +35,7 @@ module Stable = struct
     module Bin_rep_conversion = struct
       type nonrec t = t
 
-      let to_binable t =
+      let to_binable { global = t } =
         let s = Z.sign t in
         if s > 0
         then Bin_rep.Pos (Z.to_bits t)
@@ -44,15 +45,15 @@ module Stable = struct
       ;;
 
       let of_binable = function
-        | Bin_rep.Zero -> Z.zero
-        | Bin_rep.Pos bits -> Z.of_bits bits
-        | Bin_rep.Neg bits -> Z.of_bits bits |> Z.neg
+        | Bin_rep.Zero -> { global = Z.zero }
+        | Bin_rep.Pos bits -> { global = Z.of_bits bits }
+        | Bin_rep.Neg bits -> { global = Z.of_bits bits |> Z.neg }
       ;;
     end
 
     type nonrec t = t
 
-    let compare = Z.compare
+    let[@inline] compare { global = x } { global = y } = Z.compare x y
 
     include Sexpable.Stable.Of_stringable.V1 (Stringable_t)
     include Binable.Stable.Of_binable.V1 [@alert "-legacy"] (Bin_rep) (Bin_rep_conversion)
@@ -73,7 +74,7 @@ module Stable = struct
   module V2 = struct
     type nonrec t = t
 
-    let compare = Z.compare
+    let[@inline] compare { global = x } { global = y } = Z.compare x y
 
     include Sexpable.Stable.Of_stringable.V1 (Stringable_t)
 
@@ -92,7 +93,7 @@ module Stable = struct
     ;;
 
     let bin_size_t : t Bin_prot.Size.sizer =
-      fun x ->
+      fun { global = x } ->
       let size_in_bytes = compute_size_in_bytes x in
       if size_in_bytes = 0
       then Int63.bin_size_t Int63.zero
@@ -103,7 +104,7 @@ module Stable = struct
     ;;
 
     let bin_write_t : t Bin_prot.Write.writer =
-      fun buf ~pos x ->
+      fun buf ~pos { global = x } ->
       let size_in_bytes = compute_size_in_bytes x in
       if size_in_bytes = 0
       then Int63.bin_write_t buf ~pos Int63.zero
@@ -120,7 +121,7 @@ module Stable = struct
       fun buf ~pos_ref ->
       let tag = Core.Int63.bin_read_t buf ~pos_ref in
       if Int63.equal tag Int63.zero
-      then Z.zero
+      then { global = Z.zero }
       else (
         let negative = Int63.(tag land one = one) in
         let size_in_bytes = Int63.(to_int_exn (shift_right tag 1)) in
@@ -132,7 +133,7 @@ module Stable = struct
           Z.of_bits (Bytes.unsafe_to_string ~no_mutation_while_string_reachable:bytes)
         in
         pos_ref := !pos_ref + size_in_bytes;
-        if negative then Z.neg abs else abs)
+        { global = (if negative then Z.neg abs else abs) })
     ;;
 
     let module_name = "Bigint.Stable.V2.t"
@@ -180,12 +181,12 @@ module Unstable = struct
   ;;
 
   let (t_sexp_grammar : t Sexplib.Sexp_grammar.t) = { untyped = Integer }
-  let of_zarith_bigint t = t
-  let to_zarith_bigint t = t
+  let of_zarith_bigint t = { global = t }
+  let to_zarith_bigint { global = t } = t
 
   let ( /% ) x y =
-    if Z.sign y >= 0
-    then Z.ediv x y
+    if Z.sign y.global >= 0
+    then { global = Z.ediv x.global y.global }
     else
       failwithf
         "%s.(%s /%% %s) : divisor must be positive"
@@ -196,8 +197,8 @@ module Unstable = struct
   ;;
 
   let ( % ) x y =
-    if Z.sign y >= 0
-    then Z.erem x y
+    if Z.sign y.global >= 0
+    then { global = Z.erem x.global y.global }
     else
       failwithf
         "%s.(%s %% %s) : divisor must be positive"
@@ -207,76 +208,78 @@ module Unstable = struct
         ()
   ;;
 
-  let hash_fold_t state t = Int.hash_fold_t state (Z.hash t)
-  let hash = Z.hash
-  let compare = Z.compare
+  let hash_fold_t state { global = t } = Int.hash_fold_t state (Z.hash t)
+  let[@inline] hash { global = t } = Z.hash t
 
-  external compare__local : local_ t -> local_ t -> int = "ml_z_compare"
+  let[@inline] compare__local (local_ { global = x }) (local_ { global = y }) =
+    Z.compare x y
+  ;;
 
-  let ( - ) = Z.( - )
-  let ( + ) = Z.( + )
-  let ( * ) = Z.( * )
-  let ( / ) = Z.( / )
-  let rem = Z.rem
-  let ( ~- ) = Z.( ~- )
-  let neg = Z.neg
-  let abs = Z.abs
-  let succ = Z.succ
-  let pred = Z.pred
-  let equal = Z.equal
-
-  external equal__local : local_ t -> local_ t -> bool = "ml_z_equal"
-
-  let ( = ) = Z.equal
-  let ( < ) = Z.lt
-  let ( > ) = Z.gt
-  let ( <= ) = Z.leq
-  let ( >= ) = Z.geq
-  let max = Z.max
-  let min = Z.min
+  let[@inline] compare x y = compare__local x y
+  let[@inline] ( - ) { global = x } { global = y } = { global = Z.( - ) x y }
+  let[@inline] ( + ) { global = x } { global = y } = { global = Z.( + ) x y }
+  let[@inline] ( * ) { global = x } { global = y } = { global = Z.( * ) x y }
+  let[@inline] ( / ) { global = x } { global = y } = { global = Z.( / ) x y }
+  let[@inline] rem { global = x } { global = y } = { global = Z.rem x y }
+  let[@inline] ( ~- ) { global = x } = { global = Z.( ~- ) x }
+  let[@inline] neg { global = x } = { global = Z.neg x }
+  let[@inline] abs { global = x } = { global = Z.abs x }
+  let[@inline] succ { global = x } = { global = Z.succ x }
+  let[@inline] pred { global = x } = { global = Z.pred x }
+  let[@inline] equal__local (local_ { global = x }) (local_ { global = y }) = Z.equal x y
+  let[@inline] equal x y = equal__local x y
+  let ( = ) = equal
+  let[@inline] ( < ) { global = x } { global = y } = Z.lt x y
+  let[@inline] ( > ) { global = x } { global = y } = Z.gt x y
+  let[@inline] ( <= ) { global = x } { global = y } = Z.leq x y
+  let[@inline] ( >= ) { global = x } { global = y } = Z.geq x y
+  let[@inline] max { global = x } { global = y } = { global = Z.max x y }
+  let[@inline] min { global = x } { global = y } = { global = Z.min x y }
   let ascending = compare
-  let shift_right = Z.shift_right
-  let shift_left = Z.shift_left
-  let bit_not = Z.lognot
-  let bit_xor = Z.logxor
-  let bit_or = Z.logor
-  let bit_and = Z.logand
+  let[@inline] shift_right { global = t } n = { global = Z.shift_right t n }
+  let[@inline] shift_left { global = t } n = { global = Z.shift_left t n }
+  let[@inline] bit_not { global = x } = { global = Z.lognot x }
+  let[@inline] bit_xor { global = x } { global = y } = { global = Z.logxor x y }
+  let[@inline] bit_or { global = x } { global = y } = { global = Z.logor x y }
+  let[@inline] bit_and { global = x } { global = y } = { global = Z.logand x y }
   let ( land ) = bit_and
   let ( lor ) = bit_or
   let ( lxor ) = bit_xor
   let lnot = bit_not
   let ( lsl ) = shift_left
   let ( asr ) = shift_right
-  let of_int = Z.of_int
-  let of_int32 = Z.of_int32
-  let of_int64 = Z.of_int64
-  let of_nativeint = Z.of_nativeint
-
-  external of_float_unchecked : local_ float -> t = "ml_z_of_float"
-  external of_float : local_ float -> t = "ml_z_of_float"
-
+  let[@inline] of_int x = { global = Z.of_int x }
+  let[@inline] of_int32 x = { global = Z.of_int32 x }
+  let[@inline] of_int64 x = { global = Z.of_int64 x }
+  let[@inline] of_nativeint x = { global = Z.of_nativeint x }
+  let[@inline] of_float_unchecked (local_ x) = { global = Z.of_float x }
+  let of_float = of_float_unchecked
   let of_int_exn = of_int
   let of_int32_exn = of_int32
   let of_int64_exn = of_int64
   let of_nativeint_exn = of_nativeint
-  let to_int_exn = Z.to_int
-  let to_int32_exn = Z.to_int32
-  let to_int64_exn = Z.to_int64
-  let to_nativeint_exn = Z.to_nativeint
-  let to_float = Z.to_float
-  let zero = Z.zero
-  let one = Z.one
-  let minus_one = Z.minus_one
-  let to_int t = if Z.fits_int t then Some (Z.to_int t) else None
-  let to_int32 t = if Z.fits_int32 t then Some (Z.to_int32 t) else None
-  let to_int64 t = if Z.fits_int64 t then Some (Z.to_int64 t) else None
-  let to_nativeint t = if Z.fits_nativeint t then Some (Z.to_nativeint t) else None
+  let[@inline] to_int_exn { global = t } = Z.to_int t
+  let[@inline] to_int32_exn { global = t } = Z.to_int32 t
+  let[@inline] to_int64_exn { global = t } = Z.to_int64 t
+  let[@inline] to_nativeint_exn { global = t } = Z.to_nativeint t
+  let[@inline] to_float { global = t } = Z.to_float t
+  let zero = { global = Z.zero }
+  let one = { global = Z.one }
+  let minus_one = { global = Z.minus_one }
+  let to_int { global = t } = if Z.fits_int t then Some (Z.to_int t) else None
+  let to_int32 { global = t } = if Z.fits_int32 t then Some (Z.to_int32 t) else None
+  let to_int64 { global = t } = if Z.fits_int64 t then Some (Z.to_int64 t) else None
+
+  let to_nativeint { global = t } =
+    if Z.fits_nativeint t then Some (Z.to_nativeint t) else None
+  ;;
+
   let ( <> ) x y = not (equal x y)
   let incr cell = cell := succ !cell
   let decr cell = cell := pred !cell
-  let pow x y = Z.pow x (to_int_exn y)
-  let ( ** ) x y = pow x y
-  let popcount x = Z.popcount x
+  let pow { global = x } y = { global = Z.pow x (to_int_exn y) }
+  let ( ** ) = pow
+  let[@inline] popcount { global = t } = Z.popcount t
 end
 
 module T_math = Int_math.Make (Unstable)
@@ -299,6 +302,14 @@ module O = struct
 end
 
 include (O : module type of O with type t := t)
+
+module Summable = struct
+  type nonrec t = t
+
+  let zero = zero
+  let[@inline] ( + ) x y = x + y
+  let[@inline] ( - ) x y = x - y
+end
 
 module Make_random (State : sig
     type t
@@ -425,8 +436,8 @@ end = struct
       raise_s
         [%message
           "Bigint.gen_log_incl: invalid bounds" (lower_bound : t) (upper_bound : t)];
-    let min_bits = Z.numbits lower_bound in
-    let max_bits = Z.numbits upper_bound in
+    let min_bits = Z.numbits lower_bound.global in
+    let max_bits = Z.numbits upper_bound.global in
     let%bind bits = Int.gen_uniform_incl min_bits max_bits in
     gen_uniform_incl
       (max lower_bound (min_represented_by_n_bits bits))
@@ -470,7 +481,7 @@ module Hex = struct
   module M = Base.Int_conversions.Make_hex (struct
       type nonrec t = t [@@deriving hash, compare ~localize]
 
-      let to_string i = Z.format "%x" i
+      let to_string { global = i } = Z.format "%x" i
       let of_hex_string str = Z.of_string_base 16 str
 
       let of_string str =
@@ -494,10 +505,10 @@ end
 module Binary = struct
   type nonrec t = t [@@deriving bin_io, compare ~localize, hash, typerep]
 
-  let to_string t = Z.format "%#b" t
+  let to_string { global = t } = Z.format "%#b" t
   let chars_per_delimiter = 4
 
-  let to_string_hum ?(delimiter = '_') t =
+  let to_string_hum ?(delimiter = '_') { global = t } =
     let input = Z.format "%b" t in
     "0b" ^ Int_conversions.insert_delimiter_every input ~delimiter ~chars_per_delimiter
   ;;

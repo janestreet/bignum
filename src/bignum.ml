@@ -38,7 +38,9 @@ module Q = struct
     { global_ num : Z.t
     ; global_ den : Z.t
     }
-  [@@deriving globalize, hash]
+  [@@deriving hash, globalize]
+
+  let globalize x = globalize x
 
   (** Unlike [%compare.equal], which is what actually gets exposed as [equal] due to the
       later [Comparable.Make_binable], this [equal] follows IEEE float semantics: [undef]
@@ -905,7 +907,7 @@ end
 include Q
 include Comparable.Make_binable (Unstable)
 
-let compare__local = [%compare_local: t]
+let compare__local = compare__local
 
 (* [equal__local] is defined this way to ensure it agrees with the [equal] in scope from
    [Comparable.Make_binable], rather than the IEEE-float-style [equal] from [Zarith.Q]. *)
