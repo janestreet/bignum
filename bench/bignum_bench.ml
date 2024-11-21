@@ -149,153 +149,144 @@ let sexps_decimal = List.map numbers_decimal ~f:sexp_of_t
 let sexps_scientific = List.map numbers_scientific ~f:sexp_of_t
 let sexps_fraction = List.map numbers_fraction ~f:sexp_of_t
 
-let%bench_module "string" =
-  (module struct
-    let%bench "of_string (decimal)" =
-      List.iter number_literals ~f:(fun b ->
-        let (_ : Bignum.t) = Bignum.of_string b in
-        ())
-    ;;
+module%bench [@name "string"] _ = struct
+  let%bench "of_string (decimal)" =
+    List.iter number_literals ~f:(fun b ->
+      let (_ : Bignum.t) = Bignum.of_string b in
+      ())
+  ;;
 
-    let%bench "of_string (scientific)" =
-      List.iter scientific_literals ~f:(fun b ->
-        let (_ : Bignum.t) = Bignum.of_string b in
-        ())
-    ;;
+  let%bench "of_string (scientific)" =
+    List.iter scientific_literals ~f:(fun b ->
+      let (_ : Bignum.t) = Bignum.of_string b in
+      ())
+  ;;
 
-    let%bench "of_string (fraction)" =
-      List.iter fraction_literals ~f:(fun b ->
-        let (_ : Bignum.t) = Bignum.of_string b in
-        ())
-    ;;
+  let%bench "of_string (fraction)" =
+    List.iter fraction_literals ~f:(fun b ->
+      let (_ : Bignum.t) = Bignum.of_string b in
+      ())
+  ;;
 
-    let%bench "to_string_hum (decimal)" =
-      List.iter numbers_decimal ~f:(fun b ->
-        let (_ : string) = to_string_hum b in
-        ())
-    ;;
+  let%bench "to_string_hum (decimal)" =
+    List.iter numbers_decimal ~f:(fun b ->
+      let (_ : string) = to_string_hum b in
+      ())
+  ;;
 
-    let%bench "to_string_hum (scientific)" =
-      List.iter numbers_scientific ~f:(fun b ->
-        let (_ : string) = to_string_hum b in
-        ())
-    ;;
+  let%bench "to_string_hum (scientific)" =
+    List.iter numbers_scientific ~f:(fun b ->
+      let (_ : string) = to_string_hum b in
+      ())
+  ;;
 
-    let%bench "to_string_hum (fraction)" =
-      List.iter numbers_fraction ~f:(fun b ->
-        let (_ : string) = to_string_hum b in
-        ())
-    ;;
+  let%bench "to_string_hum (fraction)" =
+    List.iter numbers_fraction ~f:(fun b ->
+      let (_ : string) = to_string_hum b in
+      ())
+  ;;
 
-    let%bench "to_string_accurate (decimal)" =
-      List.iter numbers_decimal ~f:(fun b ->
-        let (_ : string) = to_string_accurate b in
-        ())
-    ;;
+  let%bench "to_string_accurate (decimal)" =
+    List.iter numbers_decimal ~f:(fun b ->
+      let (_ : string) = to_string_accurate b in
+      ())
+  ;;
 
-    let%bench "to_string_accurate (scientific)" =
-      List.iter numbers_scientific ~f:(fun b ->
-        let (_ : string) = to_string_accurate b in
-        ())
-    ;;
+  let%bench "to_string_accurate (scientific)" =
+    List.iter numbers_scientific ~f:(fun b ->
+      let (_ : string) = to_string_accurate b in
+      ())
+  ;;
 
-    let%bench "to_string_accurate (fraction)" =
-      List.iter numbers_fraction ~f:(fun b ->
-        let (_ : string) = to_string_accurate b in
-        ())
-    ;;
+  let%bench "to_string_accurate (fraction)" =
+    List.iter numbers_fraction ~f:(fun b ->
+      let (_ : string) = to_string_accurate b in
+      ())
+  ;;
 
-    let%bench "to_string_decimal (decimal)" =
-      List.iter numbers_decimal ~f:(fun b ->
-        let (_ : string) = to_string_decimal_accurate_exn b in
-        ())
-    ;;
+  let%bench "to_string_decimal (decimal)" =
+    List.iter numbers_decimal ~f:(fun b ->
+      let (_ : string) = to_string_decimal_accurate_exn b in
+      ())
+  ;;
 
-    let%bench "to_string_decimal (scientific)" =
-      List.iter numbers_scientific ~f:(fun b ->
-        let (_ : string) = to_string_decimal_accurate_exn b in
-        ())
-    ;;
-  end)
-;;
+  let%bench "to_string_decimal (scientific)" =
+    List.iter numbers_scientific ~f:(fun b ->
+      let (_ : string) = to_string_decimal_accurate_exn b in
+      ())
+  ;;
+end
 
-let%bench_module "sexp" =
-  (module struct
-    let%bench "of_sexp (decimal)" =
-      List.iter sexps_decimal ~f:(fun s ->
-        let (_ : Bignum.t) = t_of_sexp s in
-        ())
-    ;;
+module%bench [@name "sexp"] _ = struct
+  let%bench "of_sexp (decimal)" =
+    List.iter sexps_decimal ~f:(fun s ->
+      let (_ : Bignum.t) = t_of_sexp s in
+      ())
+  ;;
 
-    let%bench "of_sexp (scientific)" =
-      List.iter sexps_scientific ~f:(fun s ->
-        let (_ : Bignum.t) = t_of_sexp s in
-        ())
-    ;;
+  let%bench "of_sexp (scientific)" =
+    List.iter sexps_scientific ~f:(fun s ->
+      let (_ : Bignum.t) = t_of_sexp s in
+      ())
+  ;;
 
-    let%bench "of_sexp (fraction)" =
-      List.iter sexps_fraction ~f:(fun s ->
-        let (_ : Bignum.t) = t_of_sexp s in
-        ())
-    ;;
+  let%bench "of_sexp (fraction)" =
+    List.iter sexps_fraction ~f:(fun s ->
+      let (_ : Bignum.t) = t_of_sexp s in
+      ())
+  ;;
 
-    let%bench "to_sexp (decimal)" =
-      List.iter numbers_decimal ~f:(fun b ->
-        let (_ : Sexp.t) = sexp_of_t b in
-        ())
-    ;;
+  let%bench "to_sexp (decimal)" =
+    List.iter numbers_decimal ~f:(fun b ->
+      let (_ : Sexp.t) = sexp_of_t b in
+      ())
+  ;;
 
-    let%bench "to_sexp (scientific)" =
-      List.iter numbers_scientific ~f:(fun b ->
-        let (_ : Sexp.t) = sexp_of_t b in
-        ())
-    ;;
+  let%bench "to_sexp (scientific)" =
+    List.iter numbers_scientific ~f:(fun b ->
+      let (_ : Sexp.t) = sexp_of_t b in
+      ())
+  ;;
 
-    let%bench "to_sexp (fraction)" =
-      List.iter numbers_fraction ~f:(fun b ->
-        let (_ : Sexp.t) = sexp_of_t b in
-        ())
-    ;;
-  end)
-;;
+  let%bench "to_sexp (fraction)" =
+    List.iter numbers_fraction ~f:(fun b ->
+      let (_ : Sexp.t) = sexp_of_t b in
+      ())
+  ;;
+end
 
-let%bench_module "Bignum binprot" =
-  (module struct
-    let buf = Bigstring.create 128
+module%bench [@name "Bignum binprot"] _ = struct
+  let buf = Bigstring.create 128
 
-    let%bench "roundtrip compact" =
-      List.iter numbers_decimal ~f:(fun b ->
-        let (_ : int) = Stable.V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b in
-        let (_ : Stable.V2.t) =
-          Stable.V2.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0)
-        in
-        ())
-    ;;
+  let%bench "roundtrip compact" =
+    List.iter numbers_decimal ~f:(fun b ->
+      let (_ : int) = Stable.V2.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b in
+      let (_ : Stable.V2.t) =
+        Stable.V2.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0)
+      in
+      ())
+  ;;
 
-    let%bench "roundtrip classic" =
-      List.iter numbers_decimal ~f:(fun b ->
-        let (_ : int) = Stable.V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b in
-        let (_ : Stable.V1.t) =
-          Stable.V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0)
-        in
-        ())
-    ;;
-  end)
-;;
+  let%bench "roundtrip classic" =
+    List.iter numbers_decimal ~f:(fun b ->
+      let (_ : int) = Stable.V1.bin_writer_t.Bin_prot.Type_class.write buf ~pos:0 b in
+      let (_ : Stable.V1.t) =
+        Stable.V1.bin_reader_t.Bin_prot.Type_class.read buf ~pos_ref:(ref 0)
+      in
+      ())
+  ;;
+end
 
-let%bench_module "round" =
-  (module struct
-    let%bench_fun ("round_decimal" [@indexed digits = [ 0; 3; 6; 9 ]]) =
-      fun () ->
-      List.iter numbers_decimal ~f:(fun number ->
-        ignore (round_decimal number ~digits : t))
-    ;;
+module%bench [@name "round"] _ = struct
+  let%bench_fun ("round_decimal" [@indexed digits = [ 0; 3; 6; 9 ]]) =
+    fun () ->
+    List.iter numbers_decimal ~f:(fun number -> ignore (round_decimal number ~digits : t))
+  ;;
 
-    let%bench "round" =
-      List.iter numbers_decimal ~f:(fun number -> ignore (round number : t))
-    ;;
-  end)
-;;
+  let%bench "round" =
+    List.iter numbers_decimal ~f:(fun number -> ignore (round number : t))
+  ;;
+end
 
 let%expect_test "Monitor value changes to understand how this may affect benches" =
   let as_sexp t = print_endline (Bignum.sexp_of_t t |> Sexp.to_string) in
