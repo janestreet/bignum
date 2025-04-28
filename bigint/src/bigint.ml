@@ -1,8 +1,13 @@
 open Core
-open Modes.Export
 module Z = Zarith.Z
 
-type t = Z.t Modes.Global.t [@@deriving typerep ~abstract]
+(* Define [type t] via include to avoid error about type names being unique. *)
+module T = struct
+  type t = { global : Z.t [@globalized] }
+  [@@unboxed] [@@unsafe_allow_any_mode_crossing] [@@deriving typerep ~abstract]
+end
+
+include T
 
 let module_name = "Bigint"
 let invariant (_ : t) = ()
@@ -14,7 +19,8 @@ module Stringable_t = struct
 
   let of_string_base str ~name ~of_string =
     try { global = of_string str } with
-    | _ -> failwithf "%s.%s: invalid argument %S" name module_name str ()
+    | _ ->
+      failwithf "%s.%s: invalid argument %S" name module_name (globalize_string str) ()
   ;;
 
   let of_string str = of_string_base str ~name:"of_string" ~of_string:Z.of_string
@@ -29,18 +35,22 @@ module Stable = struct
         | Zero
         | Pos of string
         | Neg of string
-      [@@deriving bin_io, stable_witness]
+      [@@deriving bin_io ~localize, stable_witness]
     end
 
     module Bin_rep_conversion = struct
       type nonrec t = t
 
-      let to_binable { global = t } =
+      let%template[@mode m = (global, local)] to_binable { global = t } =
         let s = Z.sign t in
         if s > 0
-        then Bin_rep.Pos (Z.to_bits t)
+        then (
+          let bits = Z.to_bits t in
+          Bin_rep.Pos bits [@exclave_if_local m])
         else if s < 0
-        then Bin_rep.Neg (Z.to_bits t)
+        then (
+          let bits = Z.to_bits t in
+          Bin_rep.Neg bits [@exclave_if_local m])
         else Bin_rep.Zero
       ;;
 
@@ -55,8 +65,19 @@ module Stable = struct
 
     let[@inline] compare { global = x } { global = y } = Z.compare x y
 
-    include Sexpable.Stable.Of_stringable.V1 (Stringable_t)
-    include Binable.Stable.Of_binable.V1 [@alert "-legacy"] (Bin_rep) (Bin_rep_conversion)
+    include%template Sexpable.Stable.Of_stringable.V1 [@modality portable] (Stringable_t)
+
+    let sexp_of_t__local t = Sexp.Atom (Stringable_t.to_string t)
+
+    include%template
+      Binable.Stable.Of_binable.V1 [@mode local] [@modality portable] [@alert "-legacy"]
+        (Bin_rep)
+        (Bin_rep_conversion)
+
+    let%expect_test "stable" =
+      print_endline [%bin_digest: t];
+      [%expect {| 2872d29354b873e996296d440fad2e52 |}]
+    ;;
 
     let stable_witness : t Stable_witness.t =
       let (_bin_io : t Stable_witness.t) =
@@ -76,7 +97,7 @@ module Stable = struct
 
     let[@inline] compare { global = x } { global = y } = Z.compare x y
 
-    include Sexpable.Stable.Of_stringable.V1 (Stringable_t)
+    include%template Sexpable.Stable.Of_stringable.V1 [@modality portable] (Stringable_t)
 
     let compute_size_in_bytes x =
       let numbits = Z.numbits x in
@@ -175,6 +196,8 @@ module Unstable = struct
   include Stable.V1
   include Stringable_t
 
+  let globalize { global = t } = { global = t }
+
   let of_string_opt t =
     try Some (of_string t) with
     | _ -> None
@@ -208,7 +231,11 @@ module Unstable = struct
         ()
   ;;
 
-  let hash_fold_t state { global = t } = Int.hash_fold_t state (Z.hash t)
+  let hash_fold_int =
+    Portability_hacks.magic_portable__needs_base_and_core Int.hash_fold_t
+  ;;
+
+  let hash_fold_t state { global = t } = hash_fold_int state (Z.hash t)
   let[@inline] hash { global = t } = Z.hash t
   let[@inline] compare__local { global = x } { global = y } = Z.compare x y
   let[@inline] compare x y = compare__local x y
@@ -219,7 +246,8 @@ module Unstable = struct
   let[@inline] rem { global = x } { global = y } = { global = Z.rem x y }
   let[@inline] ( ~- ) { global = x } = { global = Z.( ~- ) x }
   let[@inline] neg { global = x } = { global = Z.neg x }
-  let[@inline] abs { global = x } = { global = Z.abs x }
+  let[@inline] abs_local { global = x } = { global = Z.abs x }
+  let abs = abs_local
   let[@inline] succ { global = x } = { global = Z.succ x }
   let[@inline] pred { global = x } = { global = Z.pred x }
   let[@inline] equal__local { global = x } { global = y } = Z.equal x y
@@ -252,8 +280,11 @@ module Unstable = struct
   let of_float = of_float_unchecked
   let of_int_exn = of_int
   let of_int32_exn = of_int32
+  let of_local_int32_exn = of_int32
   let of_int64_exn = of_int64
+  let of_local_int64_exn = of_int64
   let of_nativeint_exn = of_nativeint
+  let of_local_nativeint_exn = of_nativeint
   let[@inline] to_int_exn { global = t } = Z.to_int t
   let[@inline] to_int32_exn { global = t } = Z.to_int32 t
   let[@inline] to_int64_exn { global = t } = Z.to_int64 t
@@ -265,6 +296,10 @@ module Unstable = struct
   let to_int { global = t } = if Z.fits_int t then Some (Z.to_int t) else None
   let to_int32 { global = t } = if Z.fits_int32 t then Some (Z.to_int32 t) else None
   let to_int64 { global = t } = if Z.fits_int64 t then Some (Z.to_int64 t) else None
+  let to_local_int32_exn = to_int32_exn
+  let to_local_int64 = to_int64
+  let to_local_int64_exn = to_int64_exn
+  let to_local_nativeint_exn = to_nativeint_exn
 
   let to_nativeint { global = t } =
     if Z.fits_nativeint t then Some (Z.to_nativeint t) else None
@@ -275,14 +310,29 @@ module Unstable = struct
   let decr cell = cell := pred !cell
   let pow { global = x } y = { global = Z.pow x (to_int_exn y) }
   let ( ** ) = pow
-  let[@inline] popcount { global = t } = Z.popcount t
+  let[@inline] popcount { global = t } = Z.popcount t |> of_int
 end
 
-module T_math = Int_math.Make (Unstable)
-module T_conversions = Int_conversions.Make (Unstable)
-module T_comparable_with_zero = Comparable.With_zero (Unstable)
+module Local_comparisons = struct
+  let ( = ) = Unstable.equal__local
+  let[@inline] ( <> ) x y = not (x = y)
+  let[@inline] ( <= ) { global = x } { global = y } = Z.leq x y
+  let[@inline] ( >= ) { global = x } { global = y } = Z.geq x y
+  let[@inline] ( < ) { global = x } { global = y } = Z.lt x y
+  let[@inline] ( > ) { global = x } { global = y } = Z.gt x y
+end
 
-module T_identifiable = Identifiable.Make (struct
+module T_math = Int_math.Make (struct
+    include Unstable
+    include Local_comparisons
+  end)
+
+module T_conversions = Int_conversions.Make (Unstable)
+
+module%template T_comparable_with_zero =
+  Comparable.With_zero [@modality portable] (Unstable)
+
+module%template T_identifiable = Identifiable.Make [@modality portable] (struct
     let module_name = module_name
 
     include Unstable
@@ -297,7 +347,7 @@ module O = struct
   include Unstable
 end
 
-include (O : module type of O with type t := t)
+include O
 
 module Summable = struct
   type nonrec t = t
@@ -380,7 +430,9 @@ end
 
 module Random_internal = Make_random (Random.State)
 
-let random ?(state = Random.State.default) range = Random_internal.random ~state range
+let random ?(state = Random.State.get_default ()) range =
+  Random_internal.random ~state range
+;;
 
 module For_quickcheck : sig
   include Quickcheckable.S_int with type t := t
@@ -388,8 +440,8 @@ module For_quickcheck : sig
   val gen_negative : t Quickcheck.Generator.t
   val gen_positive : t Quickcheck.Generator.t
 end = struct
-  module Generator = Quickcheck.Generator
-  open Generator.Let_syntax
+  module Generator = Base_quickcheck.Generator
+  open Generator.Portable.Let_syntax
 
   module Uniform = Make_random (struct
       type t = Splittable_random.t
@@ -434,7 +486,7 @@ end = struct
           "Bigint.gen_log_incl: invalid bounds" (lower_bound : t) (upper_bound : t)];
     let min_bits = Z.numbits lower_bound.global in
     let max_bits = Z.numbits upper_bound.global in
-    let%bind bits = Int.gen_uniform_incl min_bits max_bits in
+    let%bind bits = Generator.int_uniform_inclusive min_bits max_bits in
     gen_uniform_incl
       (max lower_bound (min_represented_by_n_bits bits))
       (min upper_bound (max_represented_by_n_bits bits))
@@ -448,22 +500,26 @@ end = struct
       ]
   ;;
 
-  let gen_positive =
+  let%template gen_positive =
     let%bind extra_bytes = Generator.size in
     let num_bytes = Int.succ extra_bytes in
     let num_bits = Int.( * ) num_bytes 8 in
     gen_log_uniform_incl one (pred (shift_left one num_bits))
   ;;
 
-  let gen_negative = Generator.map gen_positive ~f:neg
+  let%template gen_negative = (Generator.map [@mode portable]) gen_positive ~f:neg
 
-  let quickcheck_generator =
-    Generator.weighted_union
-      [ 0.45, gen_positive; 0.1, Generator.return zero; 0.45, gen_negative ]
+  let%template quickcheck_generator =
+    (Generator.weighted_union [@mode portable])
+      [ 0.45, gen_positive
+      ; 0.1, (Generator.return [@mode portable]) zero
+      ; 0.45, gen_negative
+      ]
   ;;
 
-  let quickcheck_observer =
-    Quickcheck.Observer.create (fun t ~size:_ ~hash -> hash_fold_t hash t)
+  let%template quickcheck_observer =
+    (Quickcheck.Observer.create [@mode portable]) (fun t ~size:_ ~hash ->
+      hash_fold_t hash t)
   ;;
 
   let quickcheck_shrinker = Quickcheck.Shrinker.empty ()
@@ -484,7 +540,7 @@ module Hex = struct
         of_string_base str ~name:"Hex.of_string" ~of_string:of_hex_string
       ;;
 
-      let ( < ) = ( < )
+      let ( < ) = Local_comparisons.( < )
       let neg = neg
       let zero = zero
       let module_name = module_name ^ ".Hex"
@@ -515,3 +571,5 @@ module Binary = struct
     let to_string = to_string_hum
   end
 end
+
+include T

@@ -35,8 +35,8 @@ module Q = struct
   open (Int : Interfaces.Infix_comparators with type t := int)
 
   type t = Zarith.Q.t =
-    { num : Z.t
-    ; den : Z.t
+    { num : Z.t [@globalized]
+    ; den : Z.t [@globalized]
     }
   [@@deriving hash]
 

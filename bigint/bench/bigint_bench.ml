@@ -53,9 +53,9 @@ module%bench [@name "binio"] _ = struct
   let large_number = Bigint.of_string "1234567890123456789012345678901234567890"
 
   let[@inline always] run_poke b bin_writer_t =
-    Iobuf.Poke.bin_prot bin_writer_t b ~pos:0 small_number;
-    Iobuf.Poke.bin_prot bin_writer_t b ~pos:0 medium_number;
-    Iobuf.Poke.bin_prot bin_writer_t b ~pos:0 large_number;
+    Iobuf.Bin_io.poke bin_writer_t b ~pos:0 small_number;
+    Iobuf.Bin_io.poke bin_writer_t b ~pos:0 medium_number;
+    Iobuf.Bin_io.poke bin_writer_t b ~pos:0 large_number;
     ()
   ;;
 
@@ -80,13 +80,13 @@ module%bench [@name "binio"] _ = struct
 
   let[@inline always] run_peek b_small b_medium b_large bin_reader_t =
     let (_ : Bigint.t) =
-      Sys.opaque_identity (Iobuf.Peek.bin_prot bin_reader_t b_small ~pos:0)
+      Sys.opaque_identity (Iobuf.Bin_io.peek bin_reader_t b_small ~pos:0)
     in
     let (_ : Bigint.t) =
-      Sys.opaque_identity (Iobuf.Peek.bin_prot bin_reader_t b_medium ~pos:0)
+      Sys.opaque_identity (Iobuf.Bin_io.peek bin_reader_t b_medium ~pos:0)
     in
     let (_ : Bigint.t) =
-      Sys.opaque_identity (Iobuf.Peek.bin_prot bin_reader_t b_large ~pos:0)
+      Sys.opaque_identity (Iobuf.Bin_io.peek bin_reader_t b_large ~pos:0)
     in
     ()
   ;;
