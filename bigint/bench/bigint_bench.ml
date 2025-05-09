@@ -78,26 +78,26 @@ module%bench [@name "binio"] _ = struct
     b_small, b_medium, b_large
   ;;
 
-  let[@inline always] run_peek b_small b_medium b_large bin_reader_t =
+  let[@inline always] run_peek b_small b_medium b_large bin_read_t =
     let (_ : Bigint.t) =
-      Sys.opaque_identity (Iobuf.Bin_io.peek bin_reader_t b_small ~pos:0)
+      Sys.opaque_identity (Iobuf.Bin_io.peek bin_read_t b_small ~pos:0)
     in
     let (_ : Bigint.t) =
-      Sys.opaque_identity (Iobuf.Bin_io.peek bin_reader_t b_medium ~pos:0)
+      Sys.opaque_identity (Iobuf.Bin_io.peek bin_read_t b_medium ~pos:0)
     in
     let (_ : Bigint.t) =
-      Sys.opaque_identity (Iobuf.Bin_io.peek bin_reader_t b_large ~pos:0)
+      Sys.opaque_identity (Iobuf.Bin_io.peek bin_read_t b_large ~pos:0)
     in
     ()
   ;;
 
   let%bench_fun "peek V1" =
     let b_small, b_medium, b_large = create_peek Bigint.Stable.V1.bin_writer_t in
-    fun () -> run_peek b_small b_medium b_large Bigint.Stable.V1.bin_reader_t
+    fun () -> run_peek b_small b_medium b_large Bigint.Stable.V1.bin_read_t
   ;;
 
   let%bench_fun "peek V2" =
     let b_small, b_medium, b_large = create_peek Bigint.Stable.V2.bin_writer_t in
-    fun () -> run_peek b_small b_medium b_large Bigint.Stable.V2.bin_reader_t
+    fun () -> run_peek b_small b_medium b_large Bigint.Stable.V2.bin_read_t
   ;;
 end
