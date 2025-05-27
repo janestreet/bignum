@@ -271,7 +271,14 @@ module Stable : sig
     end
 
     type nonrec t = t
-    [@@deriving bin_io, compare, hash, sexp, sexp_grammar, stable_witness]
+    [@@deriving
+      bin_io ~localize
+      , compare ~localize
+      , equal ~localize
+      , hash
+      , sexp
+      , sexp_grammar
+      , stable_witness]
 
     (** Unlike [Bignum.{equal,compare}] and the [compare] function in this submodule, this
         [equal] follows IEEE float semantics: [nan] <> [nan]. *)
@@ -289,7 +296,14 @@ module Stable : sig
     end
 
     type nonrec t = t
-    [@@deriving bin_io, compare, hash, sexp, sexp_grammar, stable_witness]
+    [@@deriving
+      bin_io ~localize
+      , compare ~localize
+      , equal ~localize
+      , hash
+      , sexp
+      , sexp_grammar
+      , stable_witness]
 
     (** Unlike [Bignum.{equal,compare}] and the [compare] function in this submodule, this
         [equal] follows IEEE float semantics: [nan] <> [nan]. *)
@@ -307,7 +321,14 @@ module Stable : sig
     end
 
     type nonrec t = t
-    [@@deriving bin_io, compare, equal, hash, sexp, sexp_grammar, stable_witness]
+    [@@deriving
+      bin_io ~localize
+      , compare ~localize
+      , equal ~localize
+      , hash
+      , sexp
+      , sexp_grammar
+      , stable_witness]
 
     (** Unlike [Bignum.{equal,compare}] and the [compare] function in this submodule, this
         [equal] follows IEEE float semantics: [nan] <> [nan]. *)
@@ -316,11 +337,15 @@ module Stable : sig
 end
 
 module Unstable : sig
-  type nonrec t = t [@@deriving bin_io, compare, hash, sexp, sexp_grammar]
+  type nonrec t = t
+  [@@deriving
+    bin_io ~localize, compare ~localize, equal ~localize, hash, sexp, sexp_grammar]
 
-  (** Unlike [Bignum.{equal,compare}] and the [compare] function in this submodule, this
-      [equal] follows IEEE float semantics: [nan] <> [nan]. *)
-  val equal : t -> t -> bool
+  (** All [Comparisons] in this module match [Float] semantics w.r.t [nan]. So explicitly:
+      - [nan] always propagates through [min] and [max].
+      - [>=], [<=], [=], [>], and [<] always return [false] if either operand is [nan].
+      - [<>] always returns [true] if either operand is [nan]. *)
+  include Comparisons.S with type t := t
 end
 
 module O : sig

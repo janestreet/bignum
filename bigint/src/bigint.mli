@@ -36,16 +36,19 @@ val gen_negative : t Quickcheck.Generator.t
 
 module Stable : sig
   module V1 : sig
-    type nonrec t = t [@@deriving bin_io, compare, sexp, stable_witness]
+    type nonrec t = t
+    [@@deriving bin_io ~localize, compare ~localize, sexp, stable_witness]
   end
 
   module V2 : sig
-    type nonrec t = t [@@deriving bin_io, compare, sexp, stable_witness]
+    type nonrec t = t
+    [@@deriving bin_io ~localize, compare ~localize, sexp, stable_witness]
   end
 end
 
 module Unstable : sig
-  type nonrec t = t [@@deriving bin_io, compare, equal, hash, sexp]
+  type nonrec t = t
+  [@@deriving bin_io ~localize, compare ~localize, equal ~localize, hash, sexp]
 end
 
 val bin_size_t : t Bin_prot.Size.sizer
