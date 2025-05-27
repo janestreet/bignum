@@ -1202,3 +1202,145 @@ let%expect_test "Bignum.equal disagrees Bignum.Stable.V*.equal" =
   test (module Bignum.Stable.V3);
   [%expect {| unequal |}]
 ;;
+
+let%expect_test "Bignum comparisons do not behave like floating point wrt. NaN" =
+  let module Testable = struct
+    module type S = sig
+      type t [@@deriving sexp_of]
+
+      val zero : t
+      val nan : t
+      val neg_infinity : t
+
+      include Comparisons.S with type t := t
+    end
+
+    module Make (M : Comparisons.S with type t = Bignum.t) : S = struct
+      include M
+
+      let sexp_of_t = Bignum.sexp_of_t
+      let zero = Bignum.zero
+      let nan = Bignum.(0 // 0)
+      let neg_infinity = Bignum.neg_infinity
+    end
+  end
+  in
+  let test (module M : Testable.S) =
+    let open M in
+    [%message
+      ""
+        (neg_infinity >= nan : bool)
+        (nan <= zero : bool)
+        (nan = nan : bool)
+        (zero > nan : bool)
+        (nan < neg_infinity : bool)
+        (nan <> nan : bool)
+        (max nan zero : t)]
+  in
+  ([ "bignum", (module Testable.Make (Bignum))
+   ; "bignum-unstable", (module Testable.Make (Bignum.Unstable))
+   ; "float", (module Float : Testable.S)
+   ]
+   : (string * (module Testable.S)) list)
+  |> List.map ~f:(fun (name, m) -> Sexp.List [ Atom name; test m ])
+  |> Sexp.List
+  |> Expectable.print_record_transposed;
+  [%expect
+    {|
+    ┌─────────────────┬─────────────────────┬─────────────┬───────────┬────────────┬────────────────────┬────────────┬──────────────┐
+    │                 │ neg_infinity >= nan │ nan <= zero │ nan = nan │ zero > nan │ nan < neg_infinity │ nan <> nan │ max nan zero │
+    ├─────────────────┼─────────────────────┼─────────────┼───────────┼────────────┼────────────────────┼────────────┼──────────────┤
+    │ bignum          │ true                │ true        │ true      │ true       │ true               │ false      │ 0            │
+    │ bignum-unstable │ false               │ false       │ false     │ false      │ false              │ true       │ nan          │
+    │ float           │ false               │ false       │ false     │ false      │ false              │ true       │ NAN          │
+    └─────────────────┴─────────────────────┴─────────────┴───────────┴────────────┴────────────────────┴────────────┴──────────────┘
+    |}]
+;;
+
+module%test Unstable_same_as_float = struct
+  let as_bignums x y ~op = op (Bignum.of_float_decimal x) (Bignum.of_float_decimal y)
+
+  let%expect_test "Unstable.max" =
+    Quickcheck.test
+      [%quickcheck.generator: float * float]
+      ~sexp_of:[%sexp_of: float * float]
+      ~f:(fun (x, y) ->
+        [%test_eq: Bignum.t]
+          (Bignum.of_float_decimal (Float.max x y))
+          (as_bignums x y ~op:Bignum.Unstable.max))
+  ;;
+
+  let%expect_test "Unstable.min" =
+    Quickcheck.test
+      [%quickcheck.generator: float * float]
+      ~sexp_of:[%sexp_of: float * float]
+      ~f:(fun (x, y) ->
+        [%test_eq: Bignum.t]
+          (Bignum.of_float_decimal (Float.min x y))
+          (as_bignums x y ~op:Bignum.Unstable.min))
+  ;;
+
+  let%expect_test "Unstable.(>=)" =
+    Quickcheck.test
+      [%quickcheck.generator: float * float]
+      ~sexp_of:[%sexp_of: float * float]
+      ~f:(fun (x, y) ->
+        [%test_eq: bool] (Float.( >= ) x y) (as_bignums x y ~op:Bignum.Unstable.( >= )))
+  ;;
+
+  let%expect_test "Unstable.(<=)" =
+    Quickcheck.test
+      [%quickcheck.generator: float * float]
+      ~sexp_of:[%sexp_of: float * float]
+      ~f:(fun (x, y) ->
+        [%test_eq: bool] (Float.( <= ) x y) (as_bignums x y ~op:Bignum.Unstable.( <= )))
+  ;;
+
+  let%expect_test "Unstable.(=)" =
+    Quickcheck.test
+      [%quickcheck.generator: float * float]
+      ~sexp_of:[%sexp_of: float * float]
+      ~f:(fun (x, y) ->
+        [%test_eq: bool] (Float.( = ) x y) (as_bignums x y ~op:Bignum.Unstable.( = )))
+  ;;
+
+  let%expect_test "Unstable.(>)" =
+    Quickcheck.test
+      [%quickcheck.generator: float * float]
+      ~sexp_of:[%sexp_of: float * float]
+      ~f:(fun (x, y) ->
+        [%test_eq: bool] (Float.( > ) x y) (as_bignums x y ~op:Bignum.Unstable.( > )))
+  ;;
+
+  let%expect_test "Unstable.(<)" =
+    Quickcheck.test
+      [%quickcheck.generator: float * float]
+      ~sexp_of:[%sexp_of: float * float]
+      ~f:(fun (x, y) ->
+        [%test_eq: bool] (Float.( < ) x y) (as_bignums x y ~op:Bignum.Unstable.( < )))
+  ;;
+
+  let%expect_test "Unstable.(<>)" =
+    Quickcheck.test
+      [%quickcheck.generator: float * float]
+      ~sexp_of:[%sexp_of: float * float]
+      ~f:(fun (x, y) ->
+        [%test_eq: bool] (Float.( <> ) x y) (as_bignums x y ~op:Bignum.Unstable.( <> )))
+  ;;
+
+  let%expect_test "Unstable.equal" =
+    Quickcheck.test
+      [%quickcheck.generator: float * float]
+      ~sexp_of:[%sexp_of: float * float]
+      ~f:(fun (x, y) ->
+        [%test_eq: bool] (Float.equal x y) (as_bignums x y ~op:Bignum.Unstable.equal))
+  ;;
+
+  let%expect_test "Unstable.compare" =
+    Quickcheck.test
+      [%quickcheck.generator: float * float]
+      ~sexp_of:[%sexp_of: float * float]
+      ~f:(fun (x, y) ->
+        [%test_eq: int] (Float.compare x y) (as_bignums x y ~op:Bignum.Unstable.compare))
+  ;;
+end

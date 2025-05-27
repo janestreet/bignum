@@ -24,7 +24,7 @@ module Z = struct
         | Some x -> x
         | None ->
           let x = pow_10 n in
-          tbl.(n) <- Some (pow_10 n);
+          tbl.(n) <- Some x;
           x)
   ;;
 end
@@ -50,6 +50,13 @@ module Q = struct
   let[@warning "-unused-value-declaration"] equal =
     `This_gets_redefined_later_in_an_incompatible_way
   ;;
+
+  let compare__local = compare__local
+
+  (* [equal__local] is defined this way to ensure it agrees with the [equal] in scope from
+     [Comparable.Make_binable], rather than the IEEE-float-style [equal] from [Zarith.Q].
+  *)
+  let equal__local = [%compare_local.equal: t]
 
   let t_sexp_grammar : t Sexplib.Sexp_grammar.t =
     let plus_character : Sexplib.Sexp_grammar.grammar =
@@ -369,10 +376,15 @@ module Stable = struct
       type target = string
 
       let to_binable = Q.to_rational_string
+
+      let%template to_binable q = q |> Q.globalize |> Q.to_rational_string
+      [@@mode m = local]
+      ;;
+
       let of_binable = Q.of_rational_string
     end
 
-    type t = Q.t [@@deriving compare, sexp_grammar]
+    type t = Q.t [@@deriving compare ~localize, equal ~localize, sexp_grammar]
 
     let hash (t : t) = Hashtbl.hash t
     let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
@@ -397,7 +409,10 @@ module Stable = struct
       | Sexp.List _ -> of_sexp_error {|expected Atom or List [float; "+"; remainder]|} s
     ;;
 
-    include Binable.Of_binable.V1 [@alert "-legacy"] (String.V1) (Bin_rep_conversion)
+    include%template
+      Binable.Of_binable.V1 [@mode local] [@alert "-legacy"]
+        (String.V1)
+        (Bin_rep_conversion)
 
     let stable_witness =
       let (_bin_io : t Stable_witness.t) =
@@ -442,7 +457,7 @@ module Stable = struct
         | Over_100_000_000
         | Over_int
         | Other
-      [@@deriving bin_io, variants]
+      [@@deriving bin_io ~localize, variants]
     end
 
     module Bin_rep = struct
@@ -469,7 +484,7 @@ module Stable = struct
         | Over_100_000_000 of Int63.t
         | Over_int of Int63.t * Int63.t
         | Other of V1.t
-      [@@deriving bin_io, stable_witness, variants]
+      [@@deriving bin_io ~localize, stable_witness, variants]
     end
 
     let z_of_int63 =
@@ -558,6 +573,8 @@ module Stable = struct
             else Bin_rep.Over_int (Int63.of_int n, Int63.of_int d)))
       ;;
 
+      let%template to_binable q = q |> Q.globalize |> to_binable [@@mode m = local]
+
       let of_binable =
         let open Q in
         function
@@ -576,13 +593,17 @@ module Stable = struct
       ;;
     end
 
-    type t = Q.t [@@deriving compare, sexp_grammar]
+    type t = Q.t [@@deriving compare ~localize, equal ~localize, sexp_grammar]
 
     let hash (t : t) = Hashtbl.hash t
     let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
     let equal = Q.equal_which_treats_nan_differently_from_the_exposed_equal
 
-    include Binable.Of_binable.V1 [@alert "-legacy"] (Bin_rep) (Bin_rep_conversion)
+    include%template
+      Binable.Of_binable.V1 [@mode local] [@alert "-legacy"]
+        (Bin_rep)
+        (Bin_rep_conversion)
+
     module For_testing = Bin_rep_conversion
 
     let t_of_sexp = V1.t_of_sexp
@@ -672,7 +693,7 @@ module Stable = struct
         | Over_100_000_000
         | Over_int
         | Other
-      [@@deriving bin_io, variants]
+      [@@deriving bin_io ~localize, variants]
     end
 
     module Bin_rep = struct
@@ -692,7 +713,7 @@ module Stable = struct
             { num : Bigint.Stable.V2.t
             ; den : Bigint.Stable.V2.t
             }
-      [@@deriving bin_io, stable_witness, variants]
+      [@@deriving bin_io ~localize, stable_witness, variants]
     end
 
     module Bin_rep_conversion = struct
@@ -797,6 +818,8 @@ module Stable = struct
             else Bin_rep.Over_int (n, d)))
       ;;
 
+      let%template to_binable q = q |> Q.globalize |> to_binable [@@mode m = local]
+
       let of_binable =
         let open Q in
         function
@@ -816,13 +839,17 @@ module Stable = struct
       ;;
     end
 
-    type t = Q.t [@@deriving compare, sexp_grammar]
+    type t = Q.t [@@deriving compare ~localize, equal ~localize, sexp_grammar]
 
     let hash (t : t) = Hashtbl.hash t
     let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
     let equal = Q.equal_which_treats_nan_differently_from_the_exposed_equal
 
-    include Binable.Of_binable.V1 [@alert "-legacy"] (Bin_rep) (Bin_rep_conversion)
+    include%template
+      Binable.Of_binable.V1 [@mode local] [@alert "-legacy"]
+        (Bin_rep)
+        (Bin_rep_conversion)
+
     module For_testing = Bin_rep_conversion
 
     let t_of_sexp = V1.t_of_sexp
@@ -899,19 +926,31 @@ end
 
 open! Core
 
+let is_nan (t : Q.t) = Z.equal t.den Z.zero && Z.equal t.num Z.zero
+
 module Unstable = struct
   include Stable.Current
   include (Q : Ppx_hash_lib.Hashable.S with type t := t)
+
+  (* All implementations rely on the fact that in default [Q] comparison functions (apart
+     from those exposed here), [nan] is the most negative element of the universe, beyond
+     even negative infinity. *)
+
+  let ( >= ) x y = Q.(x >= y) && not (is_nan y)
+  let ( <= ) x y = Q.(x <= y) && not (is_nan x)
+  let ( = ) x y = Q.(x = y) && not (is_nan x)
+  let ( > ) x y = Q.(x > y) && not (is_nan y)
+  let ( < ) x y = Q.(x < y) && not (is_nan x)
+  let ( <> ) x y = Q.(x <> y) || is_nan x || is_nan y
+
+  (* These are copy pasted from float.ml. *)
+  let min x y = if x < y || is_nan x then x else y
+  let max x y = if x > y || is_nan x then x else y
 end
 
 include Q
 include Comparable.Make_binable (Unstable)
 
-let compare__local = compare__local
-
-(* [equal__local] is defined this way to ensure it agrees with the [equal] in scope from
-   [Comparable.Make_binable], rather than the IEEE-float-style [equal] from [Zarith.Q]. *)
-let equal__local = [%compare_local.equal: t]
 let t_of_sexp = Unstable.t_of_sexp
 let sexp_of_t = Unstable.sexp_of_t
 
@@ -921,7 +960,6 @@ let is_representable_as_decimal t =
   | Decimal { max_decimal_digits = _ } -> true
 ;;
 
-let is_nan t = Z.equal t.den Z.zero && Z.equal t.num Z.zero
 let is_integer t = Z.equal t.den Z.one
 let is_infinite t = Z.equal t.den Z.zero && not (Z.equal t.num Z.zero)
 let is_positive_infinity t = equal t infinity
