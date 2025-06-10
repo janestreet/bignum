@@ -1,7 +1,10 @@
+@@ portable
+
 (** Arbitrary-precision rational numbers. *)
 open! Core
 
-type t [@@deriving compare ~localize, equal ~localize, globalize, hash, sexp_grammar]
+type t : immutable_data
+[@@deriving compare ~localize, equal ~localize, globalize, hash, sexp_grammar]
 
 (** Sexp conversions represent values as decimals if possible, or defaults to [(x + y/z)]
     where [x] is decimal and [y] and [z] are integers. So for example, 1/3 <->
@@ -9,7 +12,7 @@ type t [@@deriving compare ~localize, equal ~localize, globalize, hash, sexp_gra
     of zero are special-cased: 0/0 <-> "nan", 1/0 <-> "inf", and -1/0 <-> "-inf". *)
 include Sexpable.S with type t := t
 
-include Comparable.S with type t := t
+include Comparable.S [@mode portable] with type t := t
 include Hashable.S with type t := t
 
 (** [gen] produces values with an order of magnitude (roughly the number of digits) in the

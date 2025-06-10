@@ -11,21 +11,31 @@ module Z = struct
        this seems like a reasonable guess for the upper bound for computations where
        performance may matter.  Add 17% tip, and you end up with 1200.  On the other
        hand, 1200 words sounds like a sane enough amount of memory for a library to
-       preallocate statically.  If this table fills up, it will take 0.3 MB, which is
+       allocate for memoization.  If this table fills up, it will take 0.3 MB, which is
        also not crazy for something actually being used. *)
     let max_memoized_pow = 1200 in
-    let tbl = Array.create ~len:Int.(max_memoized_pow + 1) None in
     let pow_10 n = pow z_ten n in
-    fun n ->
-      if n > max_memoized_pow
-      then pow_10 n
-      else (
-        match tbl.(n) with
-        | Some x -> x
+    let memoized_pow_10_unchecked : (int -> t) @ portable =
+      let tbl =
+        Portable_lazy.from_fun (fun () : t option array ->
+          Array.create ~len:Int.(max_memoized_pow + 1) None)
+      in
+      fun [@inline] n ->
+        (* We are okay with a data race here to avoid extra indirection and allocation.
+           The value read by [Array.get] will either be [Some result] or [None]. In the
+           former case, the [result] came from an earlier computation of [pow_10 n], and
+           so is correct. In the [None] case, some other domain may have already computed
+           the result, but at worst we would be duplicating the work and both setting the
+           array to the same [Some result]. *)
+        let tbl = Basement.Stdlib_shim.Obj.magic_uncontended (Portable_lazy.force tbl) in
+        match Array.get tbl n with
+        | Some result -> result
         | None ->
-          let x = pow_10 n in
-          tbl.(n) <- Some x;
-          x)
+          let result = pow_10 n in
+          Array.set tbl n (Some result);
+          result
+    in
+    fun n -> if n > max_memoized_pow then pow_10 n else memoized_pow_10_unchecked n
   ;;
 end
 
@@ -110,6 +120,7 @@ module Q = struct
     let decimal_mover = of_bigint (Z.pow_10 shift_len) in
     let ( - ) = Int.( - ) in
     let ( + ) = Int.( + ) in
+    let open Int.Replace_polymorphic_compare in
     let neg = lt t zero in
     let shifted = mul (abs t) decimal_mover in
     let num, den = shifted.num, shifted.den in
@@ -155,9 +166,11 @@ module Q = struct
     | Equal -> "nan"
   ;;
 
-  module Of_string_internal : sig
+  module Of_string_internal : sig @@ portable
     val of_string_internal : string -> t
   end = struct
+    open Int.Replace_polymorphic_compare
+
     let fail s = failwithf "unable to parse %S as Bignum.t" s ()
 
     let rec all_zeroes s ~pos ~len =
@@ -197,7 +210,7 @@ module Q = struct
     let of_scientific_string_components ~coefficient ~power =
       let power = Int.of_string power in
       let power' = Z.pow_10 (Int.abs power) in
-      let power' = if Int.( > ) power 0 then make power' Z.one else make Z.one power' in
+      let power' = if power > 0 then make power' Z.one else make Z.one power' in
       mul coefficient power'
     ;;
 
@@ -410,7 +423,7 @@ module Stable = struct
     ;;
 
     include%template
-      Binable.Of_binable.V1 [@mode local] [@alert "-legacy"]
+      Binable.Of_binable.V1 [@modality portable] [@mode local] [@alert "-legacy"]
         (String.V1)
         (Bin_rep_conversion)
 
@@ -600,7 +613,7 @@ module Stable = struct
     let equal = Q.equal_which_treats_nan_differently_from_the_exposed_equal
 
     include%template
-      Binable.Of_binable.V1 [@mode local] [@alert "-legacy"]
+      Binable.Of_binable.V1 [@modality portable] [@mode local] [@alert "-legacy"]
         (Bin_rep)
         (Bin_rep_conversion)
 
@@ -846,7 +859,7 @@ module Stable = struct
     let equal = Q.equal_which_treats_nan_differently_from_the_exposed_equal
 
     include%template
-      Binable.Of_binable.V1 [@mode local] [@alert "-legacy"]
+      Binable.Of_binable.V1 [@modality portable] [@mode local] [@alert "-legacy"]
         (Bin_rep)
         (Bin_rep_conversion)
 
@@ -930,7 +943,13 @@ let is_nan (t : Q.t) = Z.equal t.den Z.zero && Z.equal t.num Z.zero
 
 module Unstable = struct
   include Stable.Current
-  include (Q : Ppx_hash_lib.Hashable.S with type t := t)
+
+  include (
+    Q :
+    sig
+    @@ portable
+      include Ppx_hash_lib.Hashable.S with type t := t
+    end)
 
   (* All implementations rely on the fact that in default [Q] comparison functions (apart
      from those exposed here), [nan] is the most negative element of the universe, beyond
@@ -949,7 +968,8 @@ module Unstable = struct
 end
 
 include Q
-include Comparable.Make_binable (Unstable)
+
+include%template Comparable.Make_binable [@modality portable] (Unstable)
 
 let t_of_sexp = Unstable.t_of_sexp
 let sexp_of_t = Unstable.sexp_of_t
@@ -1165,10 +1185,10 @@ let to_string_hum ?delimiter ?(decimals = 9) ?(strip_zero = true) t =
 let pp_hum ppf t = Format.fprintf ppf "%s" (to_string_hum t)
 let pp_accurate ppf t = Format.fprintf ppf "%s" (to_string_accurate t)
 
-include (Hashable.Make_binable (Unstable) : Hashable.S_binable with type t := t)
+include%template Hashable.Make_binable [@modality portable] (Unstable)
 
 let of_float_decimal f = of_string (Float.to_string f)
-let arg_type = Command.Arg_type.create of_string
+let arg_type = (Command.Arg_type.create [@mode portable]) of_string
 
 module O = struct
   let ( + ) = ( + )
@@ -1178,7 +1198,12 @@ module O = struct
   let ( * ) = ( * )
   let ( ** ) = ( ** )
 
-  include (Replace_polymorphic_compare : Core.Comparisons.Infix with type t := t)
+  include (
+    Replace_polymorphic_compare :
+    sig
+    @@ portable
+      include Core.Comparisons.Infix with type t := t
+    end)
 
   let abs = abs
   let neg = neg
@@ -1203,8 +1228,8 @@ module O = struct
 end
 
 module For_quickcheck = struct
-  module Generator = Quickcheck.Generator
-  open Generator.Let_syntax
+  module Generator = Base_quickcheck.Generator
+  open Generator.Portable.Let_syntax
 
   let split_weighted_in_favor_of_right_side size =
     let%map first_half = Int.gen_log_uniform_incl 0 size in
@@ -1289,7 +1314,7 @@ module For_quickcheck = struct
   ;;
 
   let quickcheck_generator =
-    Generator.weighted_union
+    (Generator.weighted_union [@mode portable])
       [ 0.05, return infinity
       ; 0.05, return neg_infinity
       ; 0.05, return nan
@@ -1298,7 +1323,8 @@ module For_quickcheck = struct
   ;;
 
   let quickcheck_observer =
-    Quickcheck.Observer.create (fun t ~size:_ ~hash -> hash_fold_t hash t)
+    (Base_quickcheck.Observer.create [@mode portable]) (fun t ~size:_ ~hash ->
+      hash_fold_t hash t)
   ;;
 
   let quickcheck_shrinker = Quickcheck.Shrinker.empty ()
@@ -1340,4 +1366,9 @@ module For_testing = struct
 end
 
 (* bin_io functions at toplevel are deprecated but we need to export them anyway *)
-include (Unstable : Binable.S with type t := t)
+include (
+  Unstable :
+  sig
+  @@ portable
+    include Binable.S with type t := t
+  end)
