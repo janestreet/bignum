@@ -20,7 +20,7 @@ depends: [
   "zarith_stubs_js"
   "dune"               {>= "3.17.0"}
   "num"
-  "zarith"             {= "1.12+jst"}
+  "zarith"             {= "1.12+ox"}
 ]
 available: arch != "arm32" & arch != "x86_32"
 synopsis: "Core-flavoured wrapper around zarith's arbitrary-precision rationals"
