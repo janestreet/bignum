@@ -9,13 +9,19 @@ type t [@@deriving compare ~localize, equal ~localize, globalize, hash, sexp_gra
     of zero are special-cased: 0/0 <-> "nan", 1/0 <-> "inf", and -1/0 <-> "-inf". *)
 include Sexpable.S with type t := t
 
-include Comparable.S with type t := t
+include Comparable.S [@mode portable] with type t := t
 include Hashable.S with type t := t
 
 (** [gen] produces values with an order of magnitude (roughly the number of digits) in the
     numerator and denominator proportional to [Quickcheck.Generator.size]. Also includes
     values with zero in the denominator. *)
 include Quickcheckable.S with type t := t
+
+val create : num:Bigint.t -> den:Bigint.t -> t
+
+(** Like [create ~num ~den], but does not canonicalize [t]. *)
+val create_unchecked : num:Bigint.t -> den:Bigint.t -> t
+[@@alert must_be_canonical]
 
 val zero : t
 val one : t
@@ -398,6 +404,23 @@ module For_testing : sig
   val of_int64 : Int64.t -> t
   val of_zarith_bignum : Zarith.Q.t -> t
   val to_zarith_bignum : t -> Zarith.Q.t
+end
+
+module For_bigdecimal : sig
+  (** [pow_10 n] computes [10^n], with memoization for small [n].
+
+      Invariant: For all [n],
+      {[
+        Zarith.Z.equal (pow_10 n) (Zarith.Z.pow (Zarith.Z.of_int 10) n)
+      ]}
+
+      or equivalently in terms of [Bigint],
+      {[
+        Bigint.equal
+          (Bigint.of_zarith_bigint (pow_10 n))
+          (Bigint.pow (Bigint.of_int 10) (Bigint.of_int n))
+      ]} *)
+  val pow_10 : int -> Zarith.Z.t
 end
 
 val bin_size_t : t Bin_prot.Size.sizer
