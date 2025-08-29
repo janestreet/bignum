@@ -345,7 +345,13 @@ end
 module Unstable : sig
   type nonrec t = t
   [@@deriving
-    bin_io ~localize, compare ~localize, equal ~localize, hash, sexp, sexp_grammar]
+    bin_io ~localize
+    , compare ~localize
+    , equal ~localize
+    , hash
+    , sexp
+    , sexp_grammar
+    , globalize]
 
   (** All [Comparisons] in this module match [Float] semantics w.r.t [nan]. So explicitly:
       - [nan] always propagates through [min] and [max].

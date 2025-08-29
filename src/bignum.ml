@@ -860,7 +860,7 @@ module Stable = struct
       ;;
     end
 
-    type t = Q.t [@@deriving compare ~localize, equal ~localize, sexp_grammar]
+    type t = Q.t [@@deriving compare ~localize, equal ~localize, sexp_grammar, globalize]
 
     let hash (t : t) = Hashtbl.hash t
     let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
