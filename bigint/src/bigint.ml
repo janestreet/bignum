@@ -24,7 +24,9 @@ let invariant (_ : t) = ()
 module Stringable_t = struct
   type nonrec t = t
 
-  let[@inline] to_string { global = t } = Z.to_string t
+  let%template[@alloc __ = (heap, stack)] [@inline] to_string { global = t } =
+    Z.to_string t
+  ;;
 
   let of_string_base str ~name ~of_string =
     try { global = of_string str } with
@@ -72,9 +74,8 @@ module Stable = struct
 
     type nonrec t = t [@@deriving compare ~localize, equal ~localize, hash]
 
-    include%template Sexpable.Stable.Of_stringable.V1 [@modality portable] (Stringable_t)
-
-    let sexp_of_t__local (local_ t) = exclave_ Sexp.Atom (Stringable_t.to_string t)
+    include%template
+      Sexpable.Stable.Of_stringable.V1 [@alloc stack] [@modality portable] (Stringable_t)
 
     include%template
       Binable.Stable.Of_binable.V1 [@mode local] [@modality portable] [@alert "-legacy"]

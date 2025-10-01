@@ -20,6 +20,12 @@ include Hashable.S with type t := t
     values with zero in the denominator. *)
 include Quickcheckable.S with type t := t
 
+val create : num:Bigint.t -> den:Bigint.t -> t
+
+(** Like [create ~num ~den], but does not canonicalize [t]. *)
+val create_unchecked : num:Bigint.t -> den:Bigint.t -> t
+[@@alert must_be_canonical]
+
 val zero : t
 val one : t
 val ten : t
@@ -255,12 +261,12 @@ val gen_finite : t Quickcheck.Generator.t
     [lower_bound] and [upper_bound], exclusive, in units based on the fractional parts of
     the bounds plus a number of decimal places proportional to
     [Quickcheck.Generator.size]. *)
-val gen_uniform_excl : t -> t -> t Quickcheck.Generator.t
+val gen_uniform_excl : t -> t -> t Quickcheck.Generator.t @ portable
 
 (** [gen_incl lower_bound upper_bound] produces a distribution of values between
     [lower_bound] and [upper_bound], inclusive, that is approximately uniform with extra
     weight given to producing the endpoints [lower_bound] and [upper_bound]. *)
-val gen_incl : t -> t -> t Quickcheck.Generator.t
+val gen_incl : t -> t -> t Quickcheck.Generator.t @ portable
 
 val arg_type : t Command.Arg_type.t
 
@@ -342,7 +348,13 @@ end
 module Unstable : sig
   type nonrec t = t
   [@@deriving
-    bin_io ~localize, compare ~localize, equal ~localize, hash, sexp, sexp_grammar]
+    bin_io ~localize
+    , compare ~localize
+    , equal ~localize
+    , hash
+    , sexp
+    , sexp_grammar
+    , globalize]
 
   (** All [Comparisons] in this module match [Float] semantics w.r.t [nan]. So explicitly:
       - [nan] always propagates through [min] and [max].
@@ -401,6 +413,23 @@ module For_testing : sig
   val of_int64 : Int64.t -> t
   val of_zarith_bignum : Zarith.Q.t -> t
   val to_zarith_bignum : t -> Zarith.Q.t
+end
+
+module For_bigdecimal : sig
+  (** [pow_10 n] computes [10^n], with memoization for small [n].
+
+      Invariant: For all [n],
+      {[
+        Zarith.Z.equal (pow_10 n) (Zarith.Z.pow (Zarith.Z.of_int 10) n)
+      ]}
+
+      or equivalently in terms of [Bigint],
+      {[
+        Bigint.equal
+          (Bigint.of_zarith_bigint (pow_10 n))
+          (Bigint.pow (Bigint.of_int 10) (Bigint.of_int n))
+      ]} *)
+  val pow_10 : int -> Zarith.Z.t
 end
 
 val bin_size_t : t Bin_prot.Size.sizer

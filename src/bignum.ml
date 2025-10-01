@@ -39,6 +39,8 @@ module Z = struct
   ;;
 end
 
+module For_bigdecimal = Z
+
 module Q = struct
   open Core
   include Zarith.Q
@@ -49,6 +51,12 @@ module Q = struct
     ; global_ den : Z.t
     }
   [@@deriving hash, globalize]
+
+  let create ~num ~den = make (Bigint.to_zarith_bigint num) (Bigint.to_zarith_bigint den)
+
+  let create_unchecked ~num ~den =
+    { num = Bigint.to_zarith_bigint num; den = Bigint.to_zarith_bigint den }
+  ;;
 
   let globalize x = globalize x
 
@@ -852,7 +860,7 @@ module Stable = struct
       ;;
     end
 
-    type t = Q.t [@@deriving compare ~localize, equal ~localize, sexp_grammar]
+    type t = Q.t [@@deriving compare ~localize, equal ~localize, sexp_grammar, globalize]
 
     let hash (t : t) = Hashtbl.hash t
     let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
@@ -1297,7 +1305,7 @@ module For_quickcheck = struct
   ;;
 
   let gen_incl lower_bound upper_bound =
-    Generator.weighted_union
+    (Generator.weighted_union [@mode portable])
       [ 0.05, return lower_bound
       ; 0.05, return upper_bound
       ; 0.9, gen_uniform_excl lower_bound upper_bound
