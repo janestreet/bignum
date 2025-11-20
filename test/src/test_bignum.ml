@@ -405,8 +405,8 @@ let%expect_test "Monitor chosen cases that have exhibited regressions at some po
   (* Behavior for decimal < billionth. *)
   test "4.79538294005e-16";
   [%expect {| 0.000000000000000479538294005 |}];
-  (* With some version of the code, there is a discontinuity between e-09 and e-10,
-     with other it occurs between e-11 and e-12.  Monitor the range 09-12 here: *)
+  (* With some version of the code, there is a discontinuity between e-09 and e-10, with
+     other it occurs between e-11 and e-12. Monitor the range 09-12 here: *)
   test "3.062e-09";
   [%expect {| 0.000000003062 |}];
   test "3.062e-10";
@@ -564,7 +564,7 @@ module%test _ = struct
   (* This checks an axiom used in the proof of [check_overflow] *)
   let%test _ = Int.(-max_value > min_value)
 
-  (* This contains a test for all branches.*)
+  (* This contains a test for all branches. *)
   let%test_unit _ = test Current.zero (* test for Zero *)
   let%test_unit _ = test Current.one (* test for Int *)
   let%test_unit _ = test Current.ten
@@ -596,8 +596,8 @@ module%test _ = struct
   include struct
     let mul_2exp t x = of_zarith_bignum (Zarith.Q.mul_2exp (to_zarith_bignum t) x)
 
-    (* Test for overflow  : 2^62 / 25 would be Over_100(2^64) and should overflow,
-         and fallback on Other(2^62, 25) *)
+    (* Test for overflow : 2^62 / 25 would be Over_100(2^64) and should overflow, and
+       fallback on Other(2^62, 25) *)
     let%test_unit _ = test (mul_2exp Current.one 62 / Current.of_int 25)
     let%test_unit _ = test (mul_2exp (Current.of_int (-1)) 62 / Current.of_int 25)
 
@@ -838,9 +838,9 @@ module%test _ = struct
   ;;
 
   let%expect_test "bin_io de-serialization V2" =
-    (* Some bignums will have two bin_io representation depending on where they
-         were serialized.  Make sure we're able to parse things back regardless of the
-         architecture. *)
+    (* Some bignums will have two bin_io representation depending on where they were
+       serialized. Make sure we're able to parse things back regardless of the
+       architecture. *)
     let all =
       [ ( "0.0010000001"
         , [ "\011\02010000001\04710000000000"

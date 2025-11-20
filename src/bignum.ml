@@ -6,12 +6,12 @@ module Z = struct
   let z_ten = of_int 10
 
   let pow_10 =
-    (* When converting bignum to decimal string, we need to compute the value [10**(log2
-       denominator)].  Meanwhile, [log2 (max finite float)] is approximately 1024, so
-       this seems like a reasonable guess for the upper bound for computations where
-       performance may matter.  Add 17% tip, and you end up with 1200.  On the other
+    (* When converting bignum to decimal string, we need to compute the value
+       [10**(log2 denominator)]. Meanwhile, [log2 (max finite float)] is approximately
+       1024, so this seems like a reasonable guess for the upper bound for computations
+       where performance may matter. Add 17% tip, and you end up with 1200. On the other
        hand, 1200 words sounds like a sane enough amount of memory for a library to
-       allocate for memoization.  If this table fills up, it will take 0.3 MB, which is
+       allocate for memoization. If this table fills up, it will take 0.3 MB, which is
        also not crazy for something actually being used. *)
     let max_memoized_pow = 1200 in
     let pow_10 n = pow z_ten n in
@@ -187,12 +187,11 @@ module Q = struct
       else Char.equal s.[pos] '0' && all_zeroes s ~pos:Int.(pos + 1) ~len:Int.(len - 1)
     ;;
 
-    (* parse the substring of s between starting and finishing (both
-       included), knowing the position of the dot.
+    (* parse the substring of s between starting and finishing (both included), knowing
+       the position of the dot.
 
-       The decimal and frac parts can be empty strings, with semantics
-       zero (as in .5 or 1.). If both are empty strings, we raise an
-       error though.
+       The decimal and frac parts can be empty strings, with semantics zero (as in .5 or
+       1.). If both are empty strings, we raise an error though.
     *)
     let of_float_substring s ~starting ~dot ~finishing : t =
       let ( - ) = Int.( - ) in
@@ -295,8 +294,8 @@ module Q = struct
           then fail s
           else decompose s ~length (succ i) ~state:(state lor has_exp) ~dot ~exp:i ~slash
         | '+' | '-' ->
-          (* the only place where signs are allowed is at the very beginning, or after
-             an exp sign (in scientific notation). *)
+          (* the only place where signs are allowed is at the very beginning, or after an
+             exp sign (in scientific notation). *)
           if i = 0 || pred i = exp
           then decompose s ~length (succ i) ~state ~dot ~exp ~slash
           else fail s
@@ -353,9 +352,8 @@ module Q = struct
     then Kind.Den_equals_zero
     else (
       let max_decimal_digits = Z.log2 t.den in
-      (* There exist k and n such that [t.den = 2**k * 5**n]
-         iff
-         There exists m such that [10**m % t.den = 0]
+      (* There exist k and n such that [t.den = 2**k * 5**n] iff There exists m such that
+         [10**m % t.den = 0]
 
          But it's sufficient to check for [m = floor (log2 t.den)], since
          [log2 t.den >= k + n], assuming k and n exist, and of course
@@ -454,16 +452,14 @@ module Stable = struct
   end
 
   module V2 = struct
-    (* The V2 serialized representation makes use of special case to
-       achieve better compression AND less overhead when serialising /
-       deserialising.
+    (* The V2 serialized representation makes use of special case to achieve better
+       compression AND less overhead when serialising / deserialising.
 
-       It is written to go via an intermediate type.  However to gain
-       additional speed during deserialisation, we provide a handexpanded
-       read function that avoids the unnecessary allocation of the
-       intermediate type. To do so the two types below must be kept in
-       sync (including order of constructors) -- this is enforced by a
-       unit test in test_bignum.ml. *)
+       It is written to go via an intermediate type. However to gain additional speed
+       during deserialisation, we provide a handexpanded read function that avoids the
+       unnecessary allocation of the intermediate type. To do so the two types below must
+       be kept in sync (including order of constructors) -- this is enforced by a unit
+       test in test_bignum.ml. *)
     module Tag = struct
       type t =
         | Zero
@@ -482,10 +478,10 @@ module Stable = struct
     end
 
     module Bin_rep = struct
-      (* Before [Bignum] was compatible with javascript, we were using [Int.t].  In order
-         to get JavaScript compatibility, we switched to [Int63.t] which behaves the
-         same as [Int] on 64bit architectures. However, because we wanted to not change
-         the [bin_shape], we had to lie a little and add the following trick *)
+      (* Before [Bignum] was compatible with javascript, we were using [Int.t]. In order
+         to get JavaScript compatibility, we switched to [Int63.t] which behaves the same
+         as [Int] on 64bit architectures. However, because we wanted to not change the
+         [bin_shape], we had to lie a little and add the following trick *)
       module Int63 = struct
         include Int63.V1
 
@@ -530,7 +526,7 @@ module Stable = struct
          after having been multiplied by (i / d).*)
       (* pre condition: i > 0, d > 0 and d divides i *)
       let check_overflow f ~n ~d i =
-        (* Let p = i / d. p is an integer (cf pre condition). We have i = p.d.
+        (*=Let p = i / d. p is an integer (cf pre condition). We have i = p.d.
            n <= Max / i * d = Max / p.d * d
            ->   n * p <= Max / p.d * d.p, by multiplying by p on both sides.
            ->   n * p <= Max, because (Max / pd) * pd = pd q,
@@ -550,7 +546,7 @@ module Stable = struct
 
          We could be more aggressive and check for overflows based on [Int63.max_value]
          but we want to be conservative with existing 32bits users who might not be able
-         to read large ints.  *)
+         to read large ints. *)
       let to_binable t =
         if Q.equal_which_treats_nan_differently_from_the_exposed_equal t Q.zero
         then Bin_rep.Zero
@@ -690,16 +686,14 @@ module Stable = struct
   module V3 = struct
     (* The V3 serialization is heavily based on V2.
 
-       The V3 serialized representation makes use of special case to
-       achieve better compression AND less overhead when serialising /
-       deserialising.
+       The V3 serialized representation makes use of special case to achieve better
+       compression AND less overhead when serialising / deserialising.
 
-       It is written to go via an intermediate type.  However to gain
-       additional speed during deserialisation, we provide a handexpanded
-       read function that avoids the unnecessary allocation of the
-       intermediate type. To do so the two types below must be kept in
-       sync (including order of constructors) -- this is enforced by a
-       unit test in test_bignum.ml. *)
+       It is written to go via an intermediate type. However to gain additional speed
+       during deserialisation, we provide a handexpanded read function that avoids the
+       unnecessary allocation of the intermediate type. To do so the two types below must
+       be kept in sync (including order of constructors) -- this is enforced by a unit
+       test in test_bignum.ml. *)
     module Tag = struct
       type t = V2.Tag.t =
         | Zero
@@ -766,7 +760,7 @@ module Stable = struct
          after having been multiplied by (i / d).*)
       (* pre condition: i > 0, d > 0 and d divides i *)
       let check_overflow f ~n ~d i =
-        (* Let p = i / d. p is an integer (cf pre condition). We have i = p.d.
+        (*=Let p = i / d. p is an integer (cf pre condition). We have i = p.d.
            n <= Max / i * d = Max / p.d * d
            ->   n * p <= Max / p.d * d.p, by multiplying by p on both sides.
            ->   n * p <= Max, because (Max / pd) * pd = pd q,
@@ -936,11 +930,10 @@ module Stable = struct
     ;;
   end
 
-  (* Note V1, V2 and V3 are the same type in ocaml.  The only thing
-     that changes is the binprot representation.  This is safe (imho)
-     as people declaring a stable type will have to explicitely referred
-     to V1, V2 or V3.  At a later point we can hide that V1 or V2 is equal to
-     the regular type and thereby force people to switch to V3 or explicity
+  (* Note V1, V2 and V3 are the same type in ocaml. The only thing that changes is the
+     binprot representation. This is safe (imho) as people declaring a stable type will
+     have to explicitely referred to V1, V2 or V3. At a later point we can hide that V1 or
+     V2 is equal to the regular type and thereby force people to switch to V3 or explicity
      call a of/to v1/v2 function (which would be the identity) *)
   module Current = V3
 end
@@ -1001,7 +994,7 @@ let round_to_nearest_z_half_to_even t =
     let num = t.num in
     if Z.is_even num then num else Z.pred num)
   else (
-    (* Since t is not a natural number, t' <> t.  Thus, t < 0 => t' > t. *)
+    (* Since t is not a natural number, t' <> t. Thus, t < 0 => t' > t. *)
     let t' = Q.to_bigint t in
     if Int.equal (Z.sign t.num) (-1) then Z.pred t' else t')
 ;;
@@ -1067,9 +1060,9 @@ let inverse t = div one t
 
 (* Exponentiation by repeated squaring, to calculate t^n in O(log n) multiplications. *)
 let ( ** ) t pow =
-  (* Invariant: [result * (squares ** n) = t ** pow].
-     Termination: Reduces number of binary digits of [n] each iteration, so eventually
-     [n = 0], at which point [result = result * (squares ** n) = t ** pow]. *)
+  (* Invariant: [result * (squares ** n) = t ** pow]. Termination: Reduces number of
+     binary digits of [n] each iteration, so eventually [n = 0], at which point
+     [result = result * (squares ** n) = t ** pow]. *)
   let rec loop result squares n =
     if Int.equal n 0
     then result
@@ -1077,9 +1070,8 @@ let ( ** ) t pow =
     then loop result (squares * squares) (Int.( / ) n 2)
     else loop (result * squares) (squares * squares) Int.((n - 1) / 2)
   in
-  (* Int.abs Int.min_value < 0, so have to handle it separately.
-     Although raising anything other than one to that power would probably eat your entire
-     RAM pretty quickly.
+  (* Int.abs Int.min_value < 0, so have to handle it separately. Although raising anything
+     other than one to that power would probably eat your entire RAM pretty quickly.
   *)
   if Int.equal pow Int.min_value
   then inverse (loop t t Int.max_value)
@@ -1287,15 +1279,15 @@ module For_quickcheck = struct
       of_bigint num / of_bigint den
     in
     let%bind size = Generator.size in
-    (* Pick a precision beyond just [gcd], based on [size].  We want to add some digits of
+    (* Pick a precision beyond just [gcd], based on [size]. We want to add some digits of
        precision, and also a potentially non-decimal factor. *)
     let%bind decimal_size, fractional_size = split_weighted_in_favor_of_right_side size in
     let%bind decimal_divisor = exponential ~size:decimal_size in
     let fractional_divisor = of_int (Int.succ fractional_size) in
     (* We have to divide the range into at least 2 parts (otherwise the only candidate
        numbers are the bounds themselves). [fractional_divisor] and [decimal_divisor] can
-       both be 1, so we multiply by an arbitrary small number to guarantee that [divisor >
-       1]. *)
+       both be 1, so we multiply by an arbitrary small number to guarantee that
+       [divisor > 1]. *)
     let divisor = fractional_divisor * decimal_divisor * ten in
     (* choose values in units of the chosen precision. *)
     let increment = gcd / divisor in

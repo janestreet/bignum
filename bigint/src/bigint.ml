@@ -113,8 +113,7 @@ module Stable = struct
     let compute_tag ~size_in_bytes ~negative =
       let open Int63 in
       let sign_bit = if negative then one else zero in
-      (* Can't overflow:
-         size <= String.length bits < 2 * max_string_length < max_int63
+      (* Can't overflow: size <= String.length bits < 2 * max_string_length < max_int63
       *)
       shift_left (of_int size_in_bytes) 1 + sign_bit
     ;;
@@ -155,8 +154,8 @@ module Stable = struct
       else (
         let negative = Int63.(tag land one = one) in
         let size_in_bytes = Int63.(to_int_exn (shift_right tag 1)) in
-        (* Even though we could cache a buffer for small sizes, the extra logic leads to
-           a decrease in performance *)
+        (* Even though we could cache a buffer for small sizes, the extra logic leads to a
+           decrease in performance *)
         let bytes = Bytes.create size_in_bytes in
         Bin_prot.Common.blit_buf_bytes ~src_pos:!pos_ref buf bytes ~len:size_in_bytes;
         let abs =
@@ -382,12 +381,12 @@ end = struct
   (* Uniform random generation of Bigint values.
 
      [random ~state range] chooses a [depth] and generates random values using
-     [Random.State.bits state], called [1 lsl depth] times and concatenated.  The
+     [Random.State.bits state], called [1 lsl depth] times and concatenated. The
      preliminary result [n] therefore satisfies [0 <= n < 1 lsl (30 lsl depth)].
 
      In order for the random choice to be uniform between [0] and [range-1], there must
-     exist [k > 0] such that [n < k * range <= 1 lsl (30 lsl depth)].  If so, [n % range]
-     is returned.  Otherwise the random choice process is repeated from scratch.
+     exist [k > 0] such that [n < k * range <= 1 lsl (30 lsl depth)]. If so, [n % range]
+     is returned. Otherwise the random choice process is repeated from scratch.
 
      The [depth] value is chosen so that repeating is uncommon (1 in 1,000 or less). *)
 
