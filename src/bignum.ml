@@ -74,7 +74,7 @@ module Q = struct
   (* [equal__local] is defined this way to ensure it agrees with the [equal] in scope from
      [Comparable.Make_binable], rather than the IEEE-float-style [equal] from [Zarith.Q].
   *)
-  let equal__local = [%compare_local.equal: t]
+  let equal__local = ([%compare.equal: t] [@mode local])
 
   let t_sexp_grammar : t Sexplib.Sexp_grammar.t =
     let plus_character : Sexplib.Sexp_grammar.grammar =
@@ -521,9 +521,9 @@ module Stable = struct
       let tag_variants = Tag.Variants.descriptions
       let bin_rep_variants = Bin_rep.Variants.descriptions
 
-      (* To prevent a silent overflow that would result in a wrong result,
-         we only optimise after having checked that the numerator will still fit in an int
-         after having been multiplied by (i / d).*)
+      (* To prevent a silent overflow that would result in a wrong result, we only
+         optimise after having checked that the numerator will still fit in an int after
+         having been multiplied by (i / d). *)
       (* pre condition: i > 0, d > 0 and d divides i *)
       let check_overflow f ~n ~d i =
         (*=Let p = i / d. p is an integer (cf pre condition). We have i = p.d.
@@ -755,9 +755,9 @@ module Stable = struct
       let tag_variants = Tag.Variants.descriptions
       let bin_rep_variants = Bin_rep.Variants.descriptions
 
-      (* To prevent a silent overflow that would result in a wrong result,
-         we only optimise after having checked that the numerator will still fit in an int
-         after having been multiplied by (i / d).*)
+      (* To prevent a silent overflow that would result in a wrong result, we only
+         optimise after having checked that the numerator will still fit in an int after
+         having been multiplied by (i / d). *)
       (* pre condition: i > 0, d > 0 and d divides i *)
       let check_overflow f ~n ~d i =
         (*=Let p = i / d. p is an integer (cf pre condition). We have i = p.d.
