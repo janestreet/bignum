@@ -1,8 +1,8 @@
 open! Core
 
-(* Arbitrary-precision integers based on Zarith.
-   This implementation should be significantly faster and use less memory than [Big_int].
-   See benchmarks labeled "vs. Big_int" in the implementation. *)
+(* Arbitrary-precision integers based on Zarith. This implementation should be
+   significantly faster and use less memory than [Big_int]. See benchmarks labeled "vs.
+   Big_int" in the implementation. *)
 type t
 
 (** [gen] produces integers representable within [Quickcheck.size] bytes, with a random
