@@ -1,7 +1,9 @@
 (** Arbitrary-precision rational numbers. *)
 open! Core
 
-type t [@@deriving compare ~localize, equal ~localize, globalize, hash, sexp_grammar]
+type t
+[@@deriving
+  compare ~localize, equal ~localize, globalize, hash, sexp_of ~stackify, sexp_grammar]
 
 (** Sexp conversions represent values as decimals if possible, or defaults to [(x + y/z)]
     where [x] is decimal and [y] and [z] are integers. So for example, 1/3 <->

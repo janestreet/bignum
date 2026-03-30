@@ -1,7 +1,7 @@
 (library
  (name bignum)
  (public_name bignum)
- (libraries bigint core sexplib ppx_stable_witness.stable_witness zarith
-   zarith_stubs_js)
+ (libraries zarith_stubs_js bigint core sexplib
+   ppx_stable_witness.stable_witness zarith)
  (preprocess
   (pps ppx_jane)))
