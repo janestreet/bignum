@@ -4,7 +4,8 @@
 open! Core
 
 type t : immutable_data
-[@@deriving compare ~localize, equal ~localize, globalize, hash, sexp_grammar]
+[@@deriving
+  compare ~localize, equal ~localize, globalize, hash, sexp_of ~stackify, sexp_grammar]
 
 (** Sexp conversions represent values as decimals if possible, or defaults to [(x + y/z)]
     where [x] is decimal and [y] and [z] are integers. So for example, 1/3 <->

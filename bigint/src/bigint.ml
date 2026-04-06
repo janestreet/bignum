@@ -24,8 +24,8 @@ let invariant (_ : t) = ()
 module Stringable_t = struct
   type nonrec t = t
 
-  let%template[@alloc __ = (heap, stack)] [@inline] to_string { global = t } =
-    Z.to_string t
+  let%template[@alloc a = (heap, stack)] [@inline] to_string { global = t } =
+    Z.to_string t [@exclave_if_stack a]
   ;;
 
   let of_string_base str ~name ~of_string =
@@ -103,7 +103,8 @@ module Stable = struct
   module V2 = struct
     type nonrec t = t [@@deriving compare ~localize, equal ~localize]
 
-    include%template Sexpable.Stable.Of_stringable.V1 [@modality portable] (Stringable_t)
+    include%template
+      Sexpable.Stable.Of_stringable.V1 [@modality portable] [@alloc stack] (Stringable_t)
 
     let compute_size_in_bytes x =
       let numbits = Z.numbits x in
@@ -570,18 +571,31 @@ end
 module Binary = struct
   type nonrec t = t [@@deriving bin_io ~localize, compare ~localize, hash, typerep]
 
-  let to_string { global = t } = Z.format "%#b" t
   let chars_per_delimiter = 4
 
+  [%%template
+  [@@@alloc a = (heap, stack)]
+
+  let ( ^ ) = (String.append [@alloc a])
+
+  [@@@alloc.default a]
+
+  let to_string { global = t } = Z.format "%#b" t
+
   let to_string_hum ?(delimiter = '_') { global = t } =
-    let input = Z.format "%b" t in
-    "0b" ^ Int_conversions.insert_delimiter_every input ~delimiter ~chars_per_delimiter
+    (let input = Z.format "%b" t in
+     "0b"
+     ^ (Int_conversions.insert_delimiter_every [@alloc a])
+         input
+         ~delimiter
+         ~chars_per_delimiter)
+    [@exclave_if_stack a]
   ;;
 
-  let sexp_of_t t : Sexp.t = Atom (to_string t)
+  let sexp_of_t t : Sexp.t = Atom (to_string t) [@exclave_if_stack a]]
 
   module Hum = struct
-    let to_string = to_string_hum
+    let%template[@alloc a = (heap, stack)] to_string = (to_string_hum [@alloc a])
   end
 end
 
