@@ -23,7 +23,7 @@ depends: [
   "num"
   "zarith"             {= "1.12+ox"}
 ]
-available: arch != "arm32" & arch != "x86_32"
+available: arch != "x86_32"
 synopsis: "Core-flavoured wrapper around zarith's arbitrary-precision rationals"
 description: "
 "
