@@ -13,7 +13,7 @@ type t : immutable_data
     of zero are special-cased: 0/0 <-> "nan", 1/0 <-> "inf", and -1/0 <-> "-inf". *)
 include Sexpable.S with type t := t
 
-include Comparable.S [@mode portable] with type t := t
+include Comparable.S [@mode local portable] with type t := t
 include Hashable.S with type t := t
 
 (** [gen] produces values with an order of magnitude (roughly the number of digits) in the
@@ -289,10 +289,6 @@ module Stable : sig
       , sexp
       , sexp_grammar
       , stable_witness]
-
-    (** Unlike [Bignum.{equal,compare}] and the [compare] function in this submodule, this
-        [equal] follows IEEE float semantics: [nan] <> [nan]. *)
-    val equal : t -> t -> bool
   end
 
   module V2 : sig
@@ -314,10 +310,6 @@ module Stable : sig
       , sexp
       , sexp_grammar
       , stable_witness]
-
-    (** Unlike [Bignum.{equal,compare}] and the [compare] function in this submodule, this
-        [equal] follows IEEE float semantics: [nan] <> [nan]. *)
-    val equal : t -> t -> bool
   end
 
   module V3 : sig
@@ -339,10 +331,6 @@ module Stable : sig
       , sexp
       , sexp_grammar
       , stable_witness]
-
-    (** Unlike [Bignum.{equal,compare}] and the [compare] function in this submodule, this
-        [equal] follows IEEE float semantics: [nan] <> [nan]. *)
-    val equal : t -> t -> bool
   end
 end
 

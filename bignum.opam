@@ -16,14 +16,16 @@ depends: [
   "ppx_jane"
   "ppx_stable_witness"
   "sexplib"
-  "splittable_random"
   "typerep"
   "zarith_stubs_js"
   "dune"               {>= "3.17.0"}
   "num"
-  "zarith"             {= "1.12+ox"}
+  "zarith"             {>= "1.11"}
 ]
 available: arch != "x86_32"
+conflicts: [
+  "oxcaml-compiler" {< "5.2.0minus39"}
+]
 synopsis: "Core-flavoured wrapper around zarith's arbitrary-precision rationals"
 description: "
 "
