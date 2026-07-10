@@ -16,7 +16,6 @@ depends: [
   "ppx_jane"
   "ppx_stable_witness"
   "sexplib"
-  "splittable_random"
   "typerep"
   "zarith_stubs_js"
   "dune"               {>= "3.17.0"}

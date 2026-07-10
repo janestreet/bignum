@@ -59,22 +59,9 @@ module Q = struct
   ;;
 
   let globalize x = x
-
-  (** Unlike [%compare.equal], which is what actually gets exposed as [equal] due to the
-      later [Comparable.Make_binable], this [equal] follows IEEE float semantics: [undef]
-      <> [undef]. *)
-  let equal_which_treats_nan_differently_from_the_exposed_equal = Zarith.Q.equal
-
-  let[@warning "-unused-value-declaration"] equal =
-    `This_gets_redefined_later_in_an_incompatible_way
-  ;;
-
-  let compare__local = compare
-
-  (* [equal__local] is defined this way to ensure it agrees with the [equal] in scope from
-     [Comparable.Make_binable], rather than the IEEE-float-style [equal] from [Zarith.Q].
-  *)
-  let equal__local = ([%compare.equal: t] [@mode local])
+  let equal = [%compare.equal: Zarith.Q.t]
+  let%template[@mode local] equal = equal
+  let%template[@mode local] compare = compare
 
   let t_sexp_grammar : t Sexplib.Sexp_grammar.t =
     let plus_character : Sexplib.Sexp_grammar.grammar =
@@ -412,7 +399,6 @@ module Stable = struct
 
     let hash (t : t) = Hashtbl.hash t
     let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
-    let equal = Q.equal_which_treats_nan_differently_from_the_exposed_equal
 
     let%template[@alloc a @ m = (heap_global, stack_local)] sexp_of_t t =
       let open Core in
@@ -553,7 +539,7 @@ module Stable = struct
          but we want to be conservative with existing 32bits users who might not be able
          to read large ints. *)
       let to_binable t =
-        if Q.equal_which_treats_nan_differently_from_the_exposed_equal t Q.zero
+        if Q.equal t Q.zero
         then Bin_rep.Zero
         else (
           let num = t.num in
@@ -619,7 +605,6 @@ module Stable = struct
 
     let hash (t : t) = Hashtbl.hash t
     let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
-    let equal = Q.equal_which_treats_nan_differently_from_the_exposed_equal
 
     include%template
       Binable.Of_binable.V1 [@modality portable] [@mode local] [@alert "-legacy"]
@@ -786,7 +771,7 @@ module Stable = struct
       let fits_int63 x = Z.leq int63_min_value x && Z.leq x int63_max_value
 
       let to_binable t =
-        if Q.equal_which_treats_nan_differently_from_the_exposed_equal t Q.zero
+        if Q.equal t Q.zero
         then Bin_rep.Zero
         else (
           let num = t.num in
@@ -863,7 +848,6 @@ module Stable = struct
 
     let hash (t : t) = Hashtbl.hash t
     let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
-    let equal = Q.equal_which_treats_nan_differently_from_the_exposed_equal
 
     include%template
       Binable.Of_binable.V1 [@modality portable] [@mode local] [@alert "-legacy"]
@@ -974,7 +958,7 @@ end
 
 include Q
 
-include%template Comparable.Make_binable [@modality portable] (Unstable)
+include%template Comparable.Make_binable [@mode local] [@modality portable] (Unstable)
 
 let t_of_sexp = Unstable.t_of_sexp
 let%template[@alloc a = (heap, stack)] sexp_of_t = (Unstable.sexp_of_t [@alloc a])

@@ -1188,21 +1188,6 @@ let%test "tag/binable constructors in sync v3" =
     ~f:(fun (tag_name, _) (bin_name, _) -> String.equal tag_name bin_name)
 ;;
 
-let%expect_test "Bignum.equal disagrees Bignum.Stable.V*.equal" =
-  let test (module M : Equal.S with type t = Bignum.t) =
-    let nan = Bignum.(0 // 0) in
-    print_endline (if M.equal nan nan then "equal" else "unequal")
-  in
-  test (module Bignum);
-  [%expect {| equal |}];
-  test (module Bignum.Stable.V1);
-  [%expect {| unequal |}];
-  test (module Bignum.Stable.V2);
-  [%expect {| unequal |}];
-  test (module Bignum.Stable.V3);
-  [%expect {| unequal |}]
-;;
-
 let%expect_test "Bignum comparisons do not behave like floating point wrt. NaN" =
   let module Testable = struct
     module type S = sig
