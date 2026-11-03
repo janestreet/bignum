@@ -719,6 +719,18 @@ module Stable = struct
             ; den : Bigint.Stable.V2.t
             }
       [@@deriving bin_io ~localize, stable_witness, variants]
+
+      [%%template
+      [@@@alloc.default stack]
+
+      let over_10 i = exclave_ Over_10 i
+      let over_100 i = exclave_ Over_100 i
+      let over_1_000 i = exclave_ Over_1_000 i
+      let over_10_000 i = exclave_ Over_10_000 i
+      let over_100_000 i = exclave_ Over_100_000 i
+      let over_1_000_000 i = exclave_ Over_1_000_000 i
+      let over_10_000_000 i = exclave_ Over_10_000_000 i
+      let over_100_000_000 i = exclave_ Over_100_000_000 i]
     end
 
     module Bin_rep_conversion = struct
@@ -749,7 +761,9 @@ module Stable = struct
          optimise after having checked that the numerator will still fit in an int after
          having been multiplied by (i / d). *)
       (* pre condition: i > 0, d > 0 and d divides i *)
-      let check_overflow f ~n ~d i =
+
+      let%template[@alloc a @ m = (stack @ local, heap @ global)] check_overflow f ~n ~d i
+        =
         (*=Let p = i / d. p is an integer (cf pre condition). We have i = p.d.
            n <= Max / i * d = Max / p.d * d
            ->   n * p <= Max / p.d * d.p, by multiplying by p on both sides.
@@ -762,68 +776,98 @@ module Stable = struct
         *)
         let max_n = Int63.(max_value / i * d) in
         if Int63.(n > max_n || n < -max_n)
-        then Bin_rep.Over_int (n, d)
-        else f Int63.O.(n * (i / d))
+        then Bin_rep.Over_int (n, d) [@exclave_if_stack a]
+        else f Int63.O.(n * (i / d)) [@exclave_if_stack a]
       ;;
 
       let int63_min_value = z_of_int63 Int63.min_value
       let int63_max_value = z_of_int63 Int63.max_value
       let fits_int63 x = Z.leq int63_min_value x && Z.leq x int63_max_value
 
-      let to_binable t =
+      let%template[@alloc a @ m = (stack @ local, heap @ global)] to_binable t =
         if Q.equal t Q.zero
         then Bin_rep.Zero
         else (
-          let num = t.num in
-          let den = t.den in
-          if not (fits_int63 num && fits_int63 den)
-          then
-            Bin_rep.Other
-              { num = Bigint.of_zarith_bigint num; den = Bigint.of_zarith_bigint den }
-          else (
-            (* Both num and den fits in an int each *)
-            let n = int63_of_z num in
-            (* fits_int63 num *)
-            let d = int63_of_z den in
-            (* fits_int63 den *)
-            let ( = ) = Core.Int63.( = ) in
-            let ( mod ) =
-              (* We only use [mod] below for positive arguments, so [Int63.rem] is
-                 equivalent to [Int63.(%)] for these purposes. We prefer [rem] because it
-                 is based on a builtin, and should be faster. *)
-              Core.Int63.rem
-            in
-            if d = Int63.zero
-            then
-              Bin_rep.Other
-                { num = Bigint.of_zarith_bigint num; den = Bigint.of_zarith_bigint den }
-            else if d = Int63.one
-            then Bin_rep.Int n
-            else if Int63.of_int 10_000 mod d = Int63.zero
-            then
-              if Int63.of_int 100 mod d = Int63.zero
-              then
-                if Int63.of_int 10 mod d = Int63.zero
-                then check_overflow Bin_rep.over_10 ~n ~d (Int63.of_int 10)
-                else check_overflow Bin_rep.over_100 ~n ~d (Int63.of_int 100)
-              else if Int63.of_int 1_000 mod d = Int63.zero
-              then check_overflow Bin_rep.over_1_000 ~n ~d (Int63.of_int 1_000)
-              else check_overflow Bin_rep.over_10_000 ~n ~d (Int63.of_int 10_000)
-            else if Int63.of_int 100_000_000 mod d = Int63.zero
-            then
-              if Int63.of_int 1_000_000 mod d = Int63.zero
-              then
-                if Int63.of_int 100_000 mod d = Int63.zero
-                then check_overflow Bin_rep.over_100_000 ~n ~d (Int63.of_int 100_000)
-                else check_overflow Bin_rep.over_1_000_000 ~n ~d (Int63.of_int 1_000_000)
-              else if Int63.of_int 10_000_000 mod d = Int63.zero
-              then check_overflow Bin_rep.over_10_000_000 ~n ~d (Int63.of_int 10_000_000)
-              else
-                check_overflow Bin_rep.over_100_000_000 ~n ~d (Int63.of_int 100_000_000)
-            else Bin_rep.Over_int (n, d)))
+          (let num = t.num in
+           let den = t.den in
+           if not (fits_int63 num && fits_int63 den)
+           then
+             Bin_rep.Other
+               { num = Bigint.of_zarith_bigint num; den = Bigint.of_zarith_bigint den }
+           else (
+             (* Both num and den fits in an int each *)
+             let n = int63_of_z num in
+             (* fits_int63 num *)
+             let d = int63_of_z den in
+             (* fits_int63 den *)
+             let ( = ) = Core.Int63.( = ) in
+             let ( mod ) =
+               (* We only use [mod] below for positive arguments, so [Int63.rem] is
+                  equivalent to [Int63.(%)] for these purposes. We prefer [rem] because it
+                  is based on a builtin, and should be faster. *)
+               Core.Int63.rem
+             in
+             let check_overflow = check_overflow [@alloc a] in
+             if d = Int63.zero
+             then
+               Bin_rep.Other
+                 { num = Bigint.of_zarith_bigint num; den = Bigint.of_zarith_bigint den }
+             else if d = Int63.one
+             then Bin_rep.Int n
+             else if Int63.of_int 10_000 mod d = Int63.zero
+             then
+               if Int63.of_int 100 mod d = Int63.zero
+               then
+                 if Int63.of_int 10 mod d = Int63.zero
+                 then check_overflow (Bin_rep.over_10 [@alloc a]) ~n ~d (Int63.of_int 10)
+                 else
+                   check_overflow (Bin_rep.over_100 [@alloc a]) ~n ~d (Int63.of_int 100)
+               else if Int63.of_int 1_000 mod d = Int63.zero
+               then
+                 check_overflow (Bin_rep.over_1_000 [@alloc a]) ~n ~d (Int63.of_int 1_000)
+               else
+                 check_overflow
+                   (Bin_rep.over_10_000 [@alloc a])
+                   ~n
+                   ~d
+                   (Int63.of_int 10_000)
+             else if Int63.of_int 100_000_000 mod d = Int63.zero
+             then
+               if Int63.of_int 1_000_000 mod d = Int63.zero
+               then
+                 if Int63.of_int 100_000 mod d = Int63.zero
+                 then
+                   check_overflow
+                     (Bin_rep.over_100_000 [@alloc a])
+                     ~n
+                     ~d
+                     (Int63.of_int 100_000)
+                 else
+                   check_overflow
+                     (Bin_rep.over_1_000_000 [@alloc a])
+                     ~n
+                     ~d
+                     (Int63.of_int 1_000_000)
+               else if Int63.of_int 10_000_000 mod d = Int63.zero
+               then
+                 check_overflow
+                   (Bin_rep.over_10_000_000 [@alloc a])
+                   ~n
+                   ~d
+                   (Int63.of_int 10_000_000)
+               else
+                 check_overflow
+                   (Bin_rep.over_100_000_000 [@alloc a])
+                   ~n
+                   ~d
+                   (Int63.of_int 100_000_000)
+             else Bin_rep.Over_int (n, d)))
+          [@exclave_if_stack a])
       ;;
 
-      let%template to_binable q = q |> Q.globalize |> to_binable [@@mode m = local]
+      let%template to_binable q = exclave_ (to_binable [@alloc stack]) q
+      [@@mode m = local]
+      ;;
 
       let of_binable =
         let open Q in
@@ -853,6 +897,12 @@ module Stable = struct
       Binable.Of_binable.V1 [@modality portable] [@mode local] [@alert "-legacy"]
         (Bin_rep)
         (Bin_rep_conversion)
+
+    (* Override functor-provided binable functions to the non-allocating versions. *)
+    let bin_write_t buf ~pos t = (bin_write_t [@mode local]) buf ~pos t
+    let bin_size_t t = (bin_size_t [@mode local]) t
+    let bin_t = { bin_t with writer = { size = bin_size_t; write = bin_write_t } }
+    let bin_writer_t = bin_t.writer
 
     module For_testing = Bin_rep_conversion
 

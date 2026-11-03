@@ -168,8 +168,9 @@ module Stable = struct
 
     let module_name = "Bigint.Stable.V2.t"
 
-    let bin_writer_t : t Bin_prot.Type_class.writer =
-      { size = bin_size_t; write = bin_write_t }
+    let%template bin_writer_t : (t Bin_prot.Type_class.writer[@mode m]) =
+      { size = bin_size_t [@mode m]; write = bin_write_t [@mode m] }
+    [@@mode m = (global, local)]
     ;;
 
     let __bin_read_t__ _buf ~pos_ref _vint =
@@ -442,7 +443,12 @@ end = struct
   ;;
 end
 
-module Random_internal = Make_random (Random.State)
+module Random_internal = Make_random (struct
+    type t = Random.State.t
+
+    let bits = [%eta1 Random.State.bits]
+    let int = [%eta2 Random.State.int]
+  end)
 
 let random ?(state = Random.State.get_default ()) range =
   Random_internal.random ~state range

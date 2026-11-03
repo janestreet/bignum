@@ -3,4 +3,4 @@
  (libraries bigint bignum core expect_test_helpers_core expectable
    sexp_grammar.validation zarith)
  (preprocess
-  (pps ppx_jane)))
+  (pps ppx_jane -compare-require-explicit-locality)))

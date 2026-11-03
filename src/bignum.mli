@@ -328,14 +328,14 @@ module Stable : sig
       , compare ~localize
       , equal ~localize
       , hash
-      , sexp
+      , sexp ~stackify
       , sexp_grammar
       , stable_witness]
   end
 end
 
 module Unstable : sig
-  type nonrec t = t
+  type nonrec t : immutable_data = t
   [@@deriving
     bin_io ~localize
     , compare ~localize
