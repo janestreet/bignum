@@ -1,9 +1,7 @@
 (** Arbitrary-precision rational numbers. *)
 open! Core
 
-type t
-[@@deriving
-  compare ~localize, equal ~localize, globalize, hash, sexp_of ~stackify, sexp_grammar]
+type t [@@deriving compare, equal, globalize, hash, sexp_of, sexp_grammar]
 
 (** Sexp conversions represent values as decimals if possible, or defaults to [(x + y/z)]
     where [x] is decimal and [y] and [z] are integers. So for example, 1/3 <->
@@ -11,7 +9,7 @@ type t
     of zero are special-cased: 0/0 <-> "nan", 1/0 <-> "inf", and -1/0 <-> "-inf". *)
 include Sexpable.S with type t := t
 
-include Comparable.S [@mode local portable] with type t := t
+include Comparable.S with type t := t
 include Hashable.S with type t := t
 
 (** [gen] produces values with an order of magnitude (roughly the number of digits) in the
@@ -279,14 +277,7 @@ module Stable : sig
     end
 
     type nonrec t = t
-    [@@deriving
-      bin_io ~localize
-      , compare ~localize
-      , equal ~localize
-      , hash
-      , sexp
-      , sexp_grammar
-      , stable_witness]
+    [@@deriving bin_io, compare, equal, hash, sexp, sexp_grammar, stable_witness]
   end
 
   module V2 : sig
@@ -300,14 +291,7 @@ module Stable : sig
     end
 
     type nonrec t = t
-    [@@deriving
-      bin_io ~localize
-      , compare ~localize
-      , equal ~localize
-      , hash
-      , sexp
-      , sexp_grammar
-      , stable_witness]
+    [@@deriving bin_io, compare, equal, hash, sexp, sexp_grammar, stable_witness]
   end
 
   module V3 : sig
@@ -321,27 +305,13 @@ module Stable : sig
     end
 
     type nonrec t = t
-    [@@deriving
-      bin_io ~localize
-      , compare ~localize
-      , equal ~localize
-      , hash
-      , sexp
-      , sexp_grammar
-      , stable_witness]
+    [@@deriving bin_io, compare, equal, hash, sexp, sexp_grammar, stable_witness]
   end
 end
 
 module Unstable : sig
   type nonrec t = t
-  [@@deriving
-    bin_io ~localize
-    , compare ~localize
-    , equal ~localize
-    , hash
-    , sexp
-    , sexp_grammar
-    , globalize]
+  [@@deriving bin_io, compare, equal, hash, sexp, sexp_grammar, globalize]
 
   (** All [Comparisons] in this module match [Float] semantics w.r.t [nan]. So explicitly:
       - [nan] always propagates through [min] and [max].

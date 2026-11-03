@@ -4,4 +4,4 @@
  (libraries zarith_stubs_js bigint core sexplib
    ppx_stable_witness.stable_witness zarith)
  (preprocess
-  (pps ppx_jane)))
+  (pps ppx_jane -compare-require-explicit-locality)))

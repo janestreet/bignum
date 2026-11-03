@@ -2,4 +2,4 @@
  (name bigint_benchmarks)
  (libraries bigint core core_kernel.iobuf num)
  (preprocess
-  (pps ppx_jane)))
+  (pps ppx_jane -compare-require-explicit-locality)))

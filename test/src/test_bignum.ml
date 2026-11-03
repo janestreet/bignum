@@ -150,23 +150,52 @@ let%expect_test ("Float.to_string_hum matches Bignum.to_string_hum" [@tags "no-j
   [%expect {| |}]
 ;;
 
-(* The following two tests illustrate the difference between js and native wrt float
-   printing. This difference is the reason the test above was disabled in JavaScript.
+(* The following test illustrates the difference between js and native wrt float printing.
+   This difference is the reason the test above was disabled in js.
 *)
+module%test Js_vs_native_vs_wasm = struct
+  let test () =
+    let delimiter = '_'
+    and decimals = 7
+    and x = 3194450417.0351563 in
+    let float_to_string_hum =
+      Float.to_string_hum ~delimiter ~decimals ~strip_zero:false x
+    in
+    let bignum_to_string_hum =
+      Bignum.to_string_hum
+        ~delimiter
+        ~decimals
+        ~strip_zero:false
+        (Bignum.of_float_dyadic x)
+    in
+    if String.equal float_to_string_hum bignum_to_string_hum
+    then print_s [%message bignum_to_string_hum]
+    else print_s [%message "" ~float_to_string_hum ~bignum_to_string_hum]
+  ;;
 
-let%expect_test ("Float.to_string_hum big exponents (no-js)" [@tags "no-js"]) =
-  let x = -3.3810849992682576E+37 in
-  print_s
-    [%sexp (Float.to_string_hum ~delimiter:'_' ~decimals:7 ~strip_zero:false x : string)];
-  [%expect {| -33_810_849_992_682_574_344_623_022_087_906_263_040.0000000 |}]
-;;
+  let%expect_test ("native" [@tags "no-js"]) =
+    test ();
+    [%expect {| 3_194_450_417.0351562 |}]
+  ;;
 
-let%expect_test ("Float.to_string_hum big exponents (js-only)" [@tags "js-only"]) =
-  let x = -3.3810849992682576E+37 in
-  print_s
-    [%sexp (Float.to_string_hum ~delimiter:'_' ~decimals:7 ~strip_zero:false x : string)];
-  [%expect {| -33_810_849_992_682_576_000_000_000_000_000_000_000.0000000 |}]
-;;
+  let%expect_test ("javascript" [@tags "js-only", "no-wasm"]) =
+    test ();
+    [%expect
+      {|
+      ((float_to_string_hum  3_194_450_417.0351563)
+       (bignum_to_string_hum 3_194_450_417.0351562))
+      |}]
+  ;;
+
+  let%expect_test ("web assembly" [@tags "wasm-only"]) =
+    test ();
+    [%expect
+      {|
+      ((float_to_string_hum  3_194_450_417.0351563)
+       (bignum_to_string_hum 3_194_450_417.0351562))
+      |}]
+  ;;
+end
 
 let%expect_test "to_string_hum" =
   let test ?delimiter ?decimals ?strip_zero str =
@@ -808,7 +837,7 @@ module%test _ = struct
       |}]
   ;;
 
-  let%expect_test ("bin_io serialization V2 (wasm)" [@tags "wasm-only"]) =
+  let%expect_test ("bin_io serialization V2 (wasm)" [@tags "wasm-only", "32-bits-only"]) =
     bin_io_tests (module V2);
     [%expect
       {|

@@ -60,8 +60,6 @@ module Q = struct
 
   let globalize x = x
   let equal = [%compare.equal: Zarith.Q.t]
-  let%template[@mode local] equal = equal
-  let%template[@mode local] compare = compare
 
   let t_sexp_grammar : t Sexplib.Sexp_grammar.t =
     let plus_character : Sexplib.Sexp_grammar.grammar =
@@ -350,29 +348,27 @@ module Q = struct
       else Rational_not_decimal)
   ;;
 
-  let%template[@alloc a = heap] maybe_globalize t = t
-  let%template[@alloc a = stack] maybe_globalize t = globalize t
+  let maybe_globalize t = t
 
   module Serialized_parts = struct
     type t =
       | Atom of string
       | List of string * string * string
 
-    let%template[@alloc a = (heap, stack)] create t : t =
-      let t = (maybe_globalize [@alloc a]) t in
-      (if Z.equal t.den Z.one (* Special case motivated by performance speedup. *)
-       then Atom (Z.to_string t.num)
-       else (
-         match kind t with
-         | Den_equals_zero -> Atom (to_string_when_den_is_zero ~num:t.num)
-         | Decimal { max_decimal_digits } ->
-           Atom (to_string_decimal_truncate ~max_decimal_digits t)
-         | Rational_not_decimal ->
-           let main = to_string_decimal_truncate ~max_decimal_digits:9 t in
-           let main_t = of_string_internal main in
-           let remaining = sub t main_t in
-           List (main, "+", to_rational_string remaining)))
-      [@exclave_if_stack a]
+    let create t : t =
+      let t = maybe_globalize t in
+      if Z.equal t.den Z.one (* Special case motivated by performance speedup. *)
+      then Atom (Z.to_string t.num)
+      else (
+        match kind t with
+        | Den_equals_zero -> Atom (to_string_when_den_is_zero ~num:t.num)
+        | Decimal { max_decimal_digits } ->
+          Atom (to_string_decimal_truncate ~max_decimal_digits t)
+        | Rational_not_decimal ->
+          let main = to_string_decimal_truncate ~max_decimal_digits:9 t in
+          let main_t = of_string_internal main in
+          let remaining = sub t main_t in
+          List (main, "+", to_rational_string remaining))
     ;;
   end
 end
@@ -387,22 +383,17 @@ module Stable = struct
       type target = string
 
       let to_binable = Q.to_rational_string
-
-      let%template to_binable q = q |> Q.globalize |> Q.to_rational_string
-      [@@mode m = local]
-      ;;
-
       let of_binable = Q.of_rational_string
     end
 
-    type t = Q.t [@@deriving compare ~localize, equal ~localize, sexp_grammar]
+    type t = Q.t [@@deriving compare, equal, sexp_grammar]
 
     let hash (t : t) = Hashtbl.hash t
     let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
 
-    let%template[@alloc a @ m = (heap_global, stack_local)] sexp_of_t t =
+    let sexp_of_t t =
       let open Core in
-      match[@exclave_if_stack a] (Q.Serialized_parts.create [@alloc a]) t with
+      match Q.Serialized_parts.create t with
       | Atom atom -> Sexp.Atom atom
       | List (a, b, c) -> Sexp.List [ Atom a; Atom b; Atom c ]
       | exception e -> Exn.reraise e "Bignum.sexp_of_t"
@@ -419,10 +410,7 @@ module Stable = struct
       | Sexp.List _ -> of_sexp_error {|expected Atom or List [float; "+"; remainder]|} s
     ;;
 
-    include%template
-      Binable.Of_binable.V1 [@modality portable] [@mode local] [@alert "-legacy"]
-        (String.V1)
-        (Bin_rep_conversion)
+    include Binable.Of_binable.V1 [@alert "-legacy"] (String.V1) (Bin_rep_conversion)
 
     let stable_witness =
       let (_bin_io : t Stable_witness.t) =
@@ -465,7 +453,7 @@ module Stable = struct
         | Over_100_000_000
         | Over_int
         | Other
-      [@@deriving bin_io ~localize, variants]
+      [@@deriving bin_io, variants]
     end
 
     module Bin_rep = struct
@@ -492,7 +480,7 @@ module Stable = struct
         | Over_100_000_000 of Int63.t
         | Over_int of Int63.t * Int63.t
         | Other of V1.t
-      [@@deriving bin_io ~localize, stable_witness, variants]
+      [@@deriving bin_io, stable_witness, variants]
     end
 
     let z_of_int63 =
@@ -581,8 +569,6 @@ module Stable = struct
             else Bin_rep.Over_int (Int63.of_int n, Int63.of_int d)))
       ;;
 
-      let%template to_binable q = q |> Q.globalize |> to_binable [@@mode m = local]
-
       let of_binable =
         let open Q in
         function
@@ -601,16 +587,12 @@ module Stable = struct
       ;;
     end
 
-    type t = Q.t [@@deriving compare ~localize, equal ~localize, sexp_grammar]
+    type t = Q.t [@@deriving compare, equal, sexp_grammar]
 
     let hash (t : t) = Hashtbl.hash t
     let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
 
-    include%template
-      Binable.Of_binable.V1 [@modality portable] [@mode local] [@alert "-legacy"]
-        (Bin_rep)
-        (Bin_rep_conversion)
-
+    include Binable.Of_binable.V1 [@alert "-legacy"] (Bin_rep) (Bin_rep_conversion)
     module For_testing = Bin_rep_conversion
 
     let t_of_sexp = V1.t_of_sexp
@@ -698,7 +680,7 @@ module Stable = struct
         | Over_100_000_000
         | Over_int
         | Other
-      [@@deriving bin_io ~localize, variants]
+      [@@deriving bin_io, variants]
     end
 
     module Bin_rep = struct
@@ -718,7 +700,7 @@ module Stable = struct
             { num : Bigint.Stable.V2.t
             ; den : Bigint.Stable.V2.t
             }
-      [@@deriving bin_io ~localize, stable_witness, variants]
+      [@@deriving bin_io, stable_witness, variants]
     end
 
     module Bin_rep_conversion = struct
@@ -749,6 +731,7 @@ module Stable = struct
          optimise after having checked that the numerator will still fit in an int after
          having been multiplied by (i / d). *)
       (* pre condition: i > 0, d > 0 and d divides i *)
+
       let check_overflow f ~n ~d i =
         (*=Let p = i / d. p is an integer (cf pre condition). We have i = p.d.
            n <= Max / i * d = Max / p.d * d
@@ -793,6 +776,7 @@ module Stable = struct
                  is based on a builtin, and should be faster. *)
               Core.Int63.rem
             in
+            let check_overflow = check_overflow in
             if d = Int63.zero
             then
               Bin_rep.Other
@@ -823,8 +807,6 @@ module Stable = struct
             else Bin_rep.Over_int (n, d)))
       ;;
 
-      let%template to_binable q = q |> Q.globalize |> to_binable [@@mode m = local]
-
       let of_binable =
         let open Q in
         function
@@ -844,20 +826,23 @@ module Stable = struct
       ;;
     end
 
-    type t = Q.t [@@deriving compare ~localize, equal ~localize, sexp_grammar, globalize]
+    type t = Q.t [@@deriving compare, equal, sexp_grammar, globalize]
 
     let hash (t : t) = Hashtbl.hash t
     let hash_fold_t state t = hash_fold_int state (Hashtbl.hash t)
 
-    include%template
-      Binable.Of_binable.V1 [@modality portable] [@mode local] [@alert "-legacy"]
-        (Bin_rep)
-        (Bin_rep_conversion)
+    include Binable.Of_binable.V1 [@alert "-legacy"] (Bin_rep) (Bin_rep_conversion)
+
+    (* Override functor-provided binable functions to the non-allocating versions. *)
+    let bin_write_t buf ~pos t = bin_write_t buf ~pos t
+    let bin_size_t t = bin_size_t t
+    let bin_t = { bin_t with writer = { size = bin_size_t; write = bin_write_t } }
+    let bin_writer_t = bin_t.writer
 
     module For_testing = Bin_rep_conversion
 
     let t_of_sexp = V1.t_of_sexp
-    let%template[@alloc a = (heap, stack)] sexp_of_t = (V1.sexp_of_t [@alloc a])
+    let sexp_of_t = V1.sexp_of_t
     let t_sexp_grammar = V1.t_sexp_grammar
 
     let bin_read_t buf ~pos_ref =
@@ -957,11 +942,10 @@ module Unstable = struct
 end
 
 include Q
-
-include%template Comparable.Make_binable [@mode local] [@modality portable] (Unstable)
+include Comparable.Make_binable (Unstable)
 
 let t_of_sexp = Unstable.t_of_sexp
-let%template[@alloc a = (heap, stack)] sexp_of_t = (Unstable.sexp_of_t [@alloc a])
+let sexp_of_t = Unstable.sexp_of_t
 
 let is_representable_as_decimal t =
   match kind t with
@@ -1173,10 +1157,10 @@ let to_string_hum ?delimiter ?(decimals = 9) ?(strip_zero = true) t =
 let pp_hum ppf t = Format.fprintf ppf "%s" (to_string_hum t)
 let pp_accurate ppf t = Format.fprintf ppf "%s" (to_string_accurate t)
 
-include%template Hashable.Make_binable [@modality portable] (Unstable)
+include Hashable.Make_binable (Unstable)
 
 let of_float_decimal f = of_string (Float.to_string f)
-let arg_type = (Command.Arg_type.create [@mode portable]) of_string
+let arg_type = Command.Arg_type.create of_string
 
 module O = struct
   let ( + ) = ( + )
@@ -1284,7 +1268,7 @@ module For_quickcheck = struct
   ;;
 
   let gen_incl lower_bound upper_bound =
-    (Generator.weighted_union [@mode portable])
+    Generator.weighted_union
       [ 0.05, return lower_bound
       ; 0.05, return upper_bound
       ; 0.9, gen_uniform_excl lower_bound upper_bound
@@ -1301,7 +1285,7 @@ module For_quickcheck = struct
   ;;
 
   let quickcheck_generator =
-    (Generator.weighted_union [@mode portable])
+    Generator.weighted_union
       [ 0.05, return infinity
       ; 0.05, return neg_infinity
       ; 0.05, return nan
@@ -1310,8 +1294,7 @@ module For_quickcheck = struct
   ;;
 
   let quickcheck_observer =
-    (Base_quickcheck.Observer.create [@mode portable]) (fun t ~size:_ ~hash ->
-      hash_fold_t hash t)
+    Base_quickcheck.Observer.create (fun t ~size:_ ~hash -> hash_fold_t hash t)
   ;;
 
   let quickcheck_shrinker = Quickcheck.Shrinker.empty ()
